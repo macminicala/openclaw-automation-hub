@@ -1,8 +1,3 @@
-/**
- * OpenClaw Automation Hub Dashboard - v0.4
- * Enhanced with Visual Workflow Builder
- */
-
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -13,115 +8,32 @@ const { WebSocketServer } = require('ws');
 const SCRIPT_DIR = path.dirname(path.resolve(process.argv[1]));
 
 const PORT = process.env.DASHBOARD_PORT || 18799;
-const STORAGE_PATH = '~/.openclaw/automations';
-const LOGS_PATH = '~/.openclaw/logs/automation';
+const SCRIPT_DIR = __dirname;
 
-// MIME types
+// Storage
+const STORAGE_PATH = path.join(require('os').homedir(), '.openclaw/automations');
+const LOGS_PATH = path.join(require('os').homedir(), '.openclaw/logs/automation');
+[STORAGE_PATH, LOGS_PATH].forEach(dir => {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+});
+
 const MIME_TYPES = {
-  '.html': 'text/html',
+  '.html': 'text/html; charset=utf-8',
   '.css': 'text/css',
   '.js': 'application/javascript',
   '.json': 'application/json',
   '.png': 'image/png',
-  '.svg': 'image/svg+xml',
-  '.ico': 'image/x-icon'
+  '.svg': 'image/svg+xml'
 };
 
-// Helper functions
-function getAutomationsDir() {
-  let dir = STORAGE_PATH;
-  if (dir.startsWith('~')) {
-    dir = require('os').homedir() + dir.slice(1);
-  }
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  return dir;
-}
-
-function getLogsDir() {
-  let dir = LOGS_PATH;
-  if (dir.startsWith('~')) {
-    dir = require('os').homedir() + dir.slice(1);
-  }
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  return dir;
-}
-
 function loadAutomations() {
-  const dir = getAutomationsDir();
-  const files = fs.readdirSync(dir).filter(f => f.endsWith('.json'));
   const automations = {};
-  
-  for (const file of files) {
+  fs.readdirSync(STORAGE_PATH).filter(f => f.endsWith('.json')).forEach(file => {
     try {
-      const content = fs.readFileSync(path.join(dir, file), 'utf8');
-      automations[file.replace('.json', '')] = JSON.parse(content);
+      automations[file.replace('.json', '')] = JSON.parse(fs.readFileSync(path.join(STORAGE_PATH, file), 'utf8'));
     } catch (e) {}
-  }
+  });
   return automations;
-}
-
-function saveAutomation(data) {
-  const dir = getAutomationsDir();
-  const id = data.id || data.name.toLowerCase().replace(/\s+/g, '-');
-  const filePath = path.join(dir, `${id}.json`);
-  
-  const automation = {
-    id,
-    name: data.name || id,
-    enabled: data.enabled !== false,
-    description: data.description || '',
-    trigger: data.trigger || { type: 'schedule', cron: '0 9 * * *' },
-    conditions: data.conditions || [],
-    actions: data.actions || [{ type: 'shell', command: 'echo "Done"' }]
-  };
-  
-  fs.writeFileSync(filePath, JSON.stringify(automation, null, 2));
-  return automation;
-}
-
-function deleteAutomation(id) {
-  const dir = getAutomationsDir();
-  const filePath = path.join(dir, `${id}.json`);
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
-    return true;
-  }
-  return false;
-}
-
-function logExecution(automationId, result) {
-  const dir = getLogsDir();
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const logFile = path.join(dir, `${automationId}-${timestamp}.log`);
-  
-  fs.writeFileSync(logFile, JSON.stringify({
-    automationId,
-    timestamp: new Date().toISOString(),
-    result
-  }, null, 2));
-}
-
-function getLogs(automationId = null) {
-  const dir = getLogsDir();
-  if (!fs.existsSync(dir)) return [];
-  
-  const files = fs.readdirSync(dir).filter(f => f.endsWith('.log'));
-  const logs = [];
-  
-  for (const file of files.slice(-50).reverse()) {
-    if (automationId && !file.includes(automationId)) continue;
-    try {
-      const content = fs.readFileSync(path.join(dir, file), 'utf8');
-      const data = JSON.parse(content);
-      data.file = file;
-      logs.push(data);
-    } catch (e) {}
-  }
-  return logs;
 }
 
 function calculateStats(automations) {
@@ -141,9 +53,7 @@ function calculateStats(automations) {
   };
 }
 
-// HTTP Server
 const server = http.createServer((req, res) => {
-  // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -154,8 +64,7 @@ const server = http.createServer((req, res) => {
     return;
   }
   
-  const parsedUrl = url.parse(req.url, true);
-  const pathname = parsedUrl.pathname;
+  const pathname = url.parse(req.url).pathname;
   
   // API Routes
   if (pathname.startsWith('/api/')) {
@@ -164,91 +73,13 @@ const server = http.createServer((req, res) => {
     if (req.method === 'GET' && apiPath === 'automations') {
       const automations = loadAutomations();
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ 
-        automations, 
-        stats: calculateStats(automations),
-        logs: getLogs()
-      }));
-      return;
-    }
-    
-    if (req.method === 'POST' && apiPath === 'automations') {
-      let body = '';
-      req.on('data', chunk => body += chunk);
-      req.on('end', () => {
-        try {
-          const data = JSON.parse(body);
-          saveAutomation(data);
-          res.writeHead(201, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ success: true }));
-        } catch (e) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: e.message }));
-        }
-      });
-      return;
-    }
-    
-    if (req.method === 'POST' && apiPath.startsWith('automations/') && apiPath.endsWith('/enable')) {
-      const id = apiPath.split('/')[1];
-      const automations = loadAutomations();
-      if (automations[id]) {
-        automations[id].enabled = true;
-        saveAutomation(automations[id]);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true }));
-      } else {
-        res.writeHead(404);
-        res.end(JSON.stringify({ error: 'Not found' }));
-      }
-      return;
-    }
-    
-    if (req.method === 'POST' && apiPath.startsWith('automations/') && apiPath.endsWith('/disable')) {
-      const id = apiPath.split('/')[1];
-      const automations = loadAutomations();
-      if (automations[id]) {
-        automations[id].enabled = false;
-        saveAutomation(automations[id]);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true }));
-      } else {
-        res.writeHead(404);
-        res.end(JSON.stringify({ error: 'Not found' }));
-      }
-      return;
-    }
-    
-    if (req.method === 'POST' && apiPath.startsWith('automations/') && apiPath.endsWith('/run')) {
-      const id = apiPath.split('/')[1];
-      const automations = loadAutomations();
-      // Simulate run
-      const result = { success: true, timestamp: new Date().toISOString() };
-      logExecution(id, result);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(result));
-      return;
-    }
-    
-    if (req.method === 'DELETE' && apiPath.startsWith('automations/')) {
-      const id = apiPath.split('/')[1];
-      deleteAutomation(id);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ success: true }));
-      return;
-    }
-    
-    if (req.method === 'GET' && apiPath === 'logs') {
-      const id = parsedUrl.query.id;
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(getLogs(id)));
+      res.end(JSON.stringify({ automations, stats: calculateStats(automations) }));
       return;
     }
     
     if (req.method === 'GET' && apiPath === 'stats') {
-      const automations = loadAutomations();
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(calculateStats(automations)));
+      res.end(JSON.stringify(calculateStats(loadAutomations())));
       return;
     }
     
@@ -257,7 +88,7 @@ const server = http.createServer((req, res) => {
     return;
   }
   
-  // Serve dashboard files
+  // Static files
   let filePath = pathname === '/' ? '/index.html' : pathname;
   const fullPath = path.join(SCRIPT_DIR, filePath);
   
@@ -271,13 +102,11 @@ const server = http.createServer((req, res) => {
   }
 });
 
-// WebSocket for real-time updates
 const wss = new WebSocketServer({ server });
 
 wss.on('connection', (ws) => {
   console.log('[Dashboard] Client connected');
   
-  // Send heartbeat every 30 seconds
   const heartbeat = setInterval(() => {
     ws.send(JSON.stringify({ type: 'heartbeat', timestamp: Date.now() }));
   }, 30000);
@@ -286,55 +115,11 @@ wss.on('connection', (ws) => {
     clearInterval(heartbeat);
     console.log('[Dashboard] Client disconnected');
   });
-  
-  ws.on('message', (message) => {
-    try {
-      const data = JSON.parse(message);
-      
-      if (data.type === 'run') {
-        logExecution(data.id, { success: true, triggered: true, timestamp: new Date().toISOString() });
-        ws.send(JSON.stringify({ 
-          type: 'executed', 
-          id: data.id, 
-          timestamp: new Date().toISOString() 
-        }));
-      }
-    } catch (e) {}
-  });
 });
 
-// Broadcast to all connected clients
-function broadcast(data) {
-  wss.clients.forEach(client => {
-    if (client.readyState === 1) { // WebSocket.OPEN
-      client.send(JSON.stringify(data));
-    }
-  });
-}
-
-// Log when automation runs
-const originalLoad = loadAutomations;
-loadAutomations = function() {
-  const result = originalLoad();
-  broadcast({ type: 'updated', count: Object.keys(result).length });
-  return result;
-};
-
-// Start server
 server.listen(PORT, () => {
-  console.log(`\n⚡ Automation Hub Dashboard v0.4`);
+  console.log(`\n🚀 Automation Hub Dashboard`);
   console.log(`   http://localhost:${PORT}`);
   console.log(`   WebSocket: ws://localhost:${PORT}`);
-  console.log(`\nFeatures:`);
-  console.log(`   ✅ Visual Workflow Builder`);
-  console.log(`   ✅ All Trigger Types`);
-  console.log(`   ✅ Real-time Updates`);
-  console.log(`   ✅ Execution Logs\n`);
-});
-
-server.on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    console.log(`Port ${PORT} is busy. Try: PORT=18801 automation-dashboard`);
-  }
-  process.exit(1);
+  console.log('');
 });
