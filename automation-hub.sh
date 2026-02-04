@@ -118,7 +118,7 @@ EOF
   "name": "Webhook Test",
   "enabled": false,
   "description": "Test automation via HTTP webhook",
-  "trigger": { "type": "webhook", "port": 18796, "endpoint": "/webhook-test" },
+  "trigger": { "type": "webhook", "port": 18800, "endpoint": "/webhook-test" },
   "conditions": [],
   "actions": [{ "type": "shell", "command": "echo '🔗 Webhook triggered at $(date)'" }]
 }
@@ -200,7 +200,7 @@ start_dashboard() {
     log "Starting Automation Hub Dashboard..."
     echo ""
     echo -e "${GREEN}🌐 Dashboard will be available at:${NC}"
-    echo "   http://localhost:18795"
+    echo "   http://localhost:18799"
     echo ""
     echo -e "${YELLOW}Press Ctrl+C to stop${NC}"
     echo ""

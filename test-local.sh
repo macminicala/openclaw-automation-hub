@@ -56,7 +56,7 @@ if [ "$FAIL" -eq 0 ]; then
     echo "   node dashboard/server.js"
     echo ""
     echo "🌐 Then open:"
-    echo "   http://localhost:18795"
+    echo "   http://localhost:18799"
 else
     echo "⚠️  Some checks failed."
 fi

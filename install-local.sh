@@ -73,7 +73,7 @@ cat > ~/.openclaw/automations/webhook-test.json << 'EOF'
   "description": "Test webhook triggers",
   "trigger": {
     "type": "webhook",
-    "port": 18796,
+    "port": 18800,
     "endpoint": "/webhook-test"
   },
   "conditions": [],
@@ -168,7 +168,7 @@ echo ""
 echo "  automation-dashboard             # Start dashboard"
 echo ""
 echo -e "${BLUE}🌐 Dashboard URL:${NC}"
-echo "  http://localhost:18795"
+echo "  http://localhost:18799"
 echo ""
 echo -e "${BLUE}📊 Automations created:${NC}"
 ls -la ~/.openclaw/automations/ 2>/dev/null || echo "  None"

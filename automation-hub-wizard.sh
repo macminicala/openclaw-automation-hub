@@ -166,7 +166,7 @@ EOF
   "name": "Webhook Test",
   "enabled": false,
   "description": "Test via HTTP webhook",
-  "trigger": { "type": "webhook", "port": 18796, "endpoint": "/webhook-test" },
+  "trigger": { "type": "webhook", "port": 18800, "endpoint": "/webhook-test" },
   "actions": [{ "type": "shell", "command": "echo '🔗 Webhook triggered'" }]
 }
 EOF
@@ -207,7 +207,7 @@ summary() {
     echo "   node dashboard/server.js"
     echo ""
     echo -e "${YELLOW}🌐 Then open:${NC}"
-    echo "   http://localhost:18795"
+    echo "   http://localhost:18799"
     echo ""
     
     echo -e "${YELLOW}📖 Commands:${NC}"

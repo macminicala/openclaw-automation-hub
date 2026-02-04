@@ -125,7 +125,7 @@ cmd_dashboard() {
     check_skill_dir
     log "Starting Automation Hub Dashboard..."
     echo ""
-    echo -e "${GREEN}🌐 Dashboard: http://localhost:18795${NC}"
+    echo -e "${GREEN}🌐 Dashboard: http://localhost:18799${NC}"
     echo ""
     cd "$SKILL_DIR"
     node dashboard/server.js

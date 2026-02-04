@@ -19,7 +19,7 @@ node dashboard/server.js
 ```
 
 ### 3. Open Browser
-Navigate to: **http://localhost:18795**
+Navigate to: **http://localhost:18799**
 
 ---
 
@@ -72,11 +72,11 @@ node cli/main.js create --name "My Auto" --cron "0 9 * * *"
 
 ### Port in use?
 ```bash
-# Kill port 18795
-lsof -ti:18795 | xargs kill -9
+# Kill port 18799
+lsof -ti:18799 | xargs kill -9
 
 # Or use different port
-PORT=18796 node dashboard/server.js
+PORT=18799 node dashboard/server.js
 ```
 
 ### Node version too old?
@@ -101,6 +101,6 @@ node -v  # Should be 18+
 ## Success Criteria
 
 ✅ All 31 tests pass  
-✅ Dashboard loads at http://localhost:18795  
+✅ Dashboard loads at http://localhost:18799  
 ✅ Can create new automation  
 ✅ CLI commands work  

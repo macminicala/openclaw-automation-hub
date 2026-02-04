@@ -9,7 +9,7 @@ const path = require('path');
 const url = require('url');
 const { WebSocketServer } = require('ws');
 
-const PORT = process.env.DASHBOARD_PORT || 18795;
+const PORT = process.env.DASHBOARD_PORT || 18799;
 const STORAGE_PATH = '~/.openclaw/automations';
 const LOGS_PATH = '~/.openclaw/logs/automation';
 
@@ -337,7 +337,7 @@ server.listen(PORT, () => {
 
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
-    console.log(`Port ${PORT} is busy. Try: PORT=18796 automation-dashboard`);
+    console.log(`Port ${PORT} is busy. Try: PORT=18801 automation-dashboard`);
   }
   process.exit(1);
 });

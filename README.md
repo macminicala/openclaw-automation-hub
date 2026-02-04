@@ -53,7 +53,7 @@ automationhub test
 automationhub dashboard
 ```
 
-Then open **http://localhost:18795**
+Then open **http://localhost:18799**
 
 ```
 ┌─────────────────────────────────────────┐

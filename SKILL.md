@@ -43,7 +43,7 @@ npm test
 node dashboard/server.js
 
 # Open browser
-open http://localhost:18795
+open http://localhost:18799
 ```
 
 ## Features
@@ -72,7 +72,7 @@ open http://localhost:18795
 
 ## Dashboard
 
-The Automation Hub includes a beautiful web dashboard at **http://localhost:18795**
+The Automation Hub includes a beautiful web dashboard at **http://localhost:18799**
 
 Features:
 - Visual workflow builder

@@ -73,7 +73,7 @@ cat > "$HOME/.openclaw/automations/webhook-test.json << 'EOF'
   "name": "Webhook Test",
   "enabled": true,
   "description": "Test webhook triggers",
-  "trigger": { "type": "webhook", "port": 18796, "endpoint": "/webhook-test" },
+  "trigger": { "type": "webhook", "port": 18800, "endpoint": "/webhook-test" },
   "actions": [{ "type": "shell", "command": "echo '🔗 Webhook triggered'" }]
 }
 EOF
@@ -92,7 +92,7 @@ echo "🚀 To start the dashboard:"
 echo "   cd $SKILL_DIR"
 echo "   node dashboard/server.js"
 echo ""
-echo "🌐 Dashboard: http://localhost:18795"
+echo "🌐 Dashboard: http://localhost:18799"
 echo ""
 echo "📖 Documentation: $SKILL_DIR/SKILL.md"
 echo ""

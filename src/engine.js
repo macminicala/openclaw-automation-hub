@@ -273,7 +273,7 @@ class AutomationHub extends EventEmitter {
   // ============ WEBHOOK TRIGGER ============
 
   _startWebhookServer(automation) {
-    const port = automation.trigger.port || 18796;
+    const port = automation.trigger.port || 18800;
     const endpoint = automation.trigger.endpoint || `/${automation.id}`;
     
     const server = http.createServer(async (req, res) => {

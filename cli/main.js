@@ -53,7 +53,7 @@ const commands = {
       trigger: {
         type: args.trigger || 'schedule',
         cron: args.cron || '0 9 * * *',
-        ...(args.trigger === 'webhook' && { port: parseInt(args.port) || 18796, endpoint: `/${id}` }),
+        ...(args.trigger === 'webhook' && { port: parseInt(args.port) || 18800, endpoint: `/${id}` }),
         ...(args.trigger === 'file_change' && { path: args.path || '.', events: ['modify', 'add', 'delete'] })
       },
       conditions: args.conditions ? JSON.parse(args.conditions) : [],
@@ -117,7 +117,7 @@ const commands = {
     
     const options = {
       hostname: 'localhost',
-      port: 18796,
+      port: 18800,
       path: `/${args.id}`,
       method: 'POST',
       headers: {

@@ -61,7 +61,7 @@ EOF
   "id": "webhook-test",
   "name": "Webhook Test",
   "enabled": false,
-  "trigger": { "type": "webhook", "port": 18796, "endpoint": "/webhook-test" },
+  "trigger": { "type": "webhook", "port": 18800, "endpoint": "/webhook-test" },
   "actions": [{ "type": "shell", "command": "echo '🔗 Webhook triggered'" }]
 }
 EOF
