@@ -69,25 +69,103 @@ EOF
     mkdir -p "$BIN_DIR"
     cat > "$BIN_DIR/automationhub" << 'CMDCAT'
 #!/bin/bash
-# Automation Hub CLI
+# Automation Hub CLI - Usage: automationhub <command>
+
 SKILL_DIR="$HOME/.clawd/skills/automation-hub"
-[ -d "$SKILL_DIR" ] && cd "$SKILL_DIR" && node cli/main.js "$@"
+AUTOMATIONS_DIR="$HOME/.openclaw/automations"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
+NC='\033[0m'
+
+log() { echo -e "${CYAN}[🤖]${NC} $1"; }
+success() { echo -e "${GREEN}✅ $1${NC}"; }
+warn() { echo -e "${YELLOW}⚠️  $1${NC}"; }
+error() { echo -e "${RED}❌ $1${NC}"; exit 1; }
+
+show_help() {
+    echo ""
+    echo -e "${MAGENTA}⚡ Automation Hub CLI${NC}"
+    echo ""
+    echo "Usage: automationhub <command>"
+    echo ""
+    echo "Commands:"
+    echo "  install      Install/update Automation Hub"
+    echo "  test         Run tests"
+    echo "  list         List automations"
+    echo "  enable <id>  Enable automation"
+    echo "  disable <id> Disable automation"
+    echo "  test <id>    Test automation"
+    echo "  dashboard    Start dashboard"
+    echo "  status       Show status"
+    echo "  help         Show help"
+    echo ""
+}
+
+check_skill_dir() {
+    [ -d "$SKILL_DIR" ] || error "Automation Hub not found. Run: automationhub install"
+}
+
+cmd_install() {
+    log "Installing Automation Hub..."
+    if [ ! -d "$SKILL_DIR" ]; then
+        mkdir -p "$HOME/.clawd/skills"
+        git clone https://github.com/macminicala/openclaw-automation-hub.git "$SKILL_DIR"
+    else
+        cd "$SKILL_DIR" && git pull origin main 2>/dev/null || warn "Could not update"
+    fi
+    cd "$SKILL_DIR"
+    npm install 2>/dev/null || npm install
+    success "Automation Hub ready!"
+}
+
+cmd_list() {
+    check_skill_dir
+    node "$SKILL_DIR/cli/main.js" list
+}
+
+cmd_dashboard() {
+    check_skill_dir
+    log "Starting Dashboard..."
+    echo ""
+    echo -e "${GREEN}🌐 Dashboard: http://localhost:18799${NC}"
+    echo ""
+    cd "$SKILL_DIR"
+    node dashboard/server.js
+}
+
+cmd_status() {
+    TOTAL=$(ls -1 ~/.openclaw/automations/*.json 2>/dev/null | wc -l || echo 0)
+    echo ""
+    echo -e "${MAGENTA}⚡ Automation Hub${NC}"
+    echo ""
+    echo "Total automations: $TOTAL"
+    echo ""
+}
+
+case "$1" in
+    install|setup) cmd_install ;;
+    list|ls) cmd_list ;;
+    dashboard|start) cmd_dashboard ;;
+    status) cmd_status ;;
+    help|--help|-h|"") show_help ;;
+    *) cmd_list ;;
+esac
 CMDCAT
     chmod +x "$BIN_DIR/automationhub"
     
-    # Add to PATH in .zshrc if not already there
+    # Add to PATH
     if ! grep -q 'automationhub' ~/.zshrc 2>/dev/null; then
         echo 'export PATH="$HOME/.clawd/bin:$PATH"' >> ~/.zshrc
     fi
     
-    success "Automation Hub installed!"
-    
-    echo ""
-    log "Reloading shell..."
     source ~/.zshrc 2>/dev/null || true
     
-    echo ""
-    success "Ready! Run: automationhub dashboard"
+    success "Automation Hub installed!"
 }
 
 # Run tests
