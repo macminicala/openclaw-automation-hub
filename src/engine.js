@@ -534,8 +534,12 @@ class AutomationHub extends EventEmitter {
 
   _loadConditions() {
     this.registerCondition('keyword', (condition, context) => {
-      const text = context.email?.text || context.email?.subject || context.text || '';
-      return condition.match === 'contains' ? text.includes(condition.value) : !text.includes(condition.value);
+      // Search in email subject, text, or generic text
+      const text = context.email?.subject || context.email?.text || context.text || '';
+      if (!text) return condition.match === 'not_contains';
+      return condition.match === 'contains' 
+        ? text.toLowerCase().includes(condition.value.toLowerCase())
+        : !text.toLowerCase().includes(condition.value.toLowerCase());
     });
 
     this.registerCondition('time_range', (condition, context) => {
@@ -557,7 +561,9 @@ class AutomationHub extends EventEmitter {
 
     this.registerCondition('calendar_event', (condition, context) => {
       if (!context.event) return true;
-      return condition.summary?.includes(context.event.summary);
+      // Check if event summary contains the condition value
+      const eventSummary = context.event.summary || '';
+      return eventSummary.toLowerCase().includes((condition.summary || condition.value || '').toLowerCase());
     });
   }
 
