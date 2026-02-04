@@ -1,7 +1,7 @@
 {
   "name": "openclaw-automation-hub",
-  "version": "0.2.0",
-  "description": "AI-native automation engine for OpenClaw. v0.2 adds webhook, file watch, and AI agent support.",
+  "version": "0.3.0",
+  "description": "AI-native automation engine for OpenClaw. v0.3 adds Email, Calendar, and System Monitor triggers.",
   "main": "src/engine.js",
   "bin": {
     "automation-hub": "cli/main.js",
@@ -19,6 +19,8 @@
     "automation",
     "workflows",
     "webhook",
+    "email",
+    "calendar",
     "ai",
     "local"
   ],

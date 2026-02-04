@@ -1,0 +1,24 @@
+{
+  "id": "calendar-reminder",
+  "name": "Calendar Meeting Reminder",
+  "enabled": false,
+  "description": "Get reminded 15 minutes before meetings",
+  "trigger": {
+    "type": "calendar",
+    "provider": "google",
+    "interval": 5
+  },
+  "conditions": [],
+  "actions": [
+    {
+      "type": "agent",
+      "model": "claude-opus-4-5",
+      "prompt": "Meeting '${event.summary}' starts at ${event.start}. Prepare a quick summary of what needs to be discussed. Check my calendar for any conflicts."
+    },
+    {
+      "type": "notify",
+      "channel": "telegram",
+      "message": "⏰ Meeting '${event.summary}' starts in 15 minutes at ${event.location}"
+    }
+  ]
+}

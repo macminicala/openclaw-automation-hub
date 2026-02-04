@@ -2,23 +2,20 @@
   "id": "system-monitor",
   "name": "System Health Monitor",
   "enabled": false,
-  "description": "Alert when CPU or memory usage is high",
+  "description": "Alert when system resources are running low",
   "trigger": {
-    "type": "schedule",
-    "cron": "*/5 * * * *"
+    "type": "system",
+    "interval": 60,
+    "cpuThreshold": 90,
+    "memoryThreshold": 90,
+    "diskThreshold": 95
   },
-  "conditions": [
-    {
-      "type": "shell",
-      "command": "top -l 1 | grep 'CPU usage' | awk '{print $3}' | sed 's/%//'"
-    }
-  ],
+  "conditions": [],
   "actions": [
     {
-      "type": "shell",
-      "command": "echo 'System check passed' > /dev/null"
+      "type": "notify",
+      "channel": "telegram",
+      "message": "🔴 System Alert:\nCPU: ${metrics.cpu}%\nMemory: ${metrics.memory}%\nDisk: ${metrics.disk}%"
     }
-  ],
-  "cpu_threshold": 80,
-  "memory_threshold": 90
+  ]
 }

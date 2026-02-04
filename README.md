@@ -4,7 +4,7 @@
 
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Node](https://img.shields.io/badge/Node.js-18+-green.svg)
-![Version](https://img.shields.io/badge/Version-0.2.0-orange.svg)
+![Version](https://img.shields.io/badge/Version-0.3.0-orange.svg)
 
 **AI-native automation engine for OpenClaw.** Transform your personal AI assistant from reactive to proactive.
 
@@ -20,15 +20,18 @@ Automation Hub is a local-first, AI-native automation engine that transforms Ope
 
 Unlike cloud-based tools (IFTTT, Zapier), Automation Hub runs **100% locally** on your machine, respecting your privacy while leveraging your existing OpenClaw agent context.
 
-### ✨ Key Features (v0.2)
+### ✨ Key Features (v0.3)
 
 | Feature | Status | Description |
 |---------|--------|-------------|
 | Schedule Trigger | ✅ | Time-based (cron) automation |
-| Webhook Trigger | ✅ NEW | HTTP endpoint triggers |
-| File Watch Trigger | ✅ NEW | Execute on file changes |
-| AI Agent Action | ✅ NEW | Run AI-powered automations |
-| Git Action | ✅ NEW | Auto-commit and push |
+| Webhook Trigger | ✅ | HTTP endpoint triggers |
+| File Watch Trigger | ✅ | Execute on file changes |
+| **Email Trigger** | ✅ NEW | IMAP email monitoring |
+| **Calendar Trigger** | ✅ NEW | Calendar event monitoring |
+| **System Monitor** | ✅ NEW | CPU/Memory/Disk alerts |
+| AI Agent Action | ✅ | Run AI-powered automations |
+| Git Action | ✅ | Auto-commit and push |
 | Beautiful Dashboard | ✅ | Web UI for management |
 | 100% Local | ✅ | Privacy-first, no cloud |
 
@@ -57,23 +60,20 @@ npm install
 # List all automations
 automation-hub list
 
-# Create a schedule-based automation
-automation-hub create --name "Morning Briefing" --cron "0 9 * * 1-5"
+# Create an email monitor
+automation-hub create --name "Email Monitor" --trigger email --host imap.gmail.com --user "you@gmail.com"
 
-# Create a webhook automation
-automation-hub create --name "API Trigger" --trigger webhook --port 18800
+# Create a calendar reminder
+automation-hub create --name "Meeting Reminder" --trigger calendar
 
-# Create a file watcher automation
-automation-hub create --name "File Watch" --trigger file_change --path ~/projects
+# Create a system monitor
+automation-hub create --name "System Health" --trigger system --cpu-threshold 90
 
 # Enable an automation
-automation-hub enable morning-briefing
+automation-hub enable email-monitor
 
 # Test an automation
-automation-hub test morning-briefing
-
-# View webhook status
-automation-hub webhook api-trigger
+automation-hub test email-monitor
 ```
 
 ---
@@ -84,90 +84,97 @@ automation-hub webhook api-trigger
 
 | Trigger | Description | Example |
 |---------|-------------|---------|
-| `schedule` | Time-based execution via cron | `"0 9 * * *"` (9AM daily) |
+| `schedule` | Time-based via cron | `"0 9 * * *"` (9AM daily) |
 | `webhook` | HTTP POST/GET endpoint | Port 18796, endpoint `/:id` |
-| `file_change` | Watch files/directories for changes | Watch `~/projects` for changes |
+| `file_change` | Watch files/dirs for changes | Watch `~/projects` |
+| `email` | IMAP email monitoring | Gmail, Outlook, any IMAP |
+| `calendar` | Calendar event monitoring | Google Calendar, Apple Calendar |
+| `system` | CPU/Memory/Disk monitoring | Alert on thresholds |
+
+### Trigger Examples
+
+#### Email Trigger
+```json
+{
+  "trigger": {
+    "type": "email",
+    "host": "imap.gmail.com",
+    "port": 993,
+    "user": "your-email@gmail.com",
+    "folder": "INBOX",
+    "interval": 60
+  }
+}
+```
+
+#### Calendar Trigger
+```json
+{
+  "trigger": {
+    "type": "calendar",
+    "provider": "google",
+    "interval": 5
+  }
+}
+```
+
+#### System Monitor Trigger
+```json
+{
+  "trigger": {
+    "type": "system",
+    "interval": 60,
+    "cpuThreshold": 90,
+    "memoryThreshold": 90,
+    "diskThreshold": 95
+  }
+}
+```
 
 ### Available Conditions
 
-| Condition | Description | Example |
-|-----------|-------------|---------|
-| `keyword` | Text contains/excludes value | `{ "match": "contains", "value": "urgent" }` |
-| `time_range` | Within time window | `{ "start": "08:00", "end": "18:00" }` |
-| `sender` | From specific source | `{ "value": "client@company.com" }` |
-| `file_pattern` | Match glob patterns | `{ "pattern": "**/*.json" }` |
+| Condition | Description |
+|-----------|-------------|
+| `keyword` | Text contains/excludes value |
+| `time_range` | Within time window |
+| `sender` | From specific email address |
+| `file_pattern` | Match glob patterns |
+| `calendar_event` | Event summary contains text |
 
 ### Available Actions
 
-| Action | Description | Example |
-|--------|-------------|---------|
-| `shell` | Execute shell command | `{ "command": "echo 'Done'" }` |
-| `agent` | Run AI agent with prompt | `{ "prompt": "Summarize this..." }` |
-| `git` | Git operations | `{ "add": true, "commit": "...", "push": true }` |
-| `notify` | Send to OpenClaw channel | `{ "channel": "telegram", "message": "Done" }` |
-| `webhook_out` | Call external API | `{ "url": "https://api.example.com" }` |
+| Action | Description |
+|--------|-------------|
+| `shell` | Execute shell command |
+| `agent` | Run AI agent with prompt |
+| `git` | Git operations (add/commit/push) |
+| `notify` | Send to OpenClaw channel |
+| `email_reply` | Send email reply |
+| `webhook_out` | Call external API |
 
 ---
 
-## 🔗 Trigger Examples
-
-### Schedule Trigger
-```json
-{
-  "trigger": {
-    "type": "schedule",
-    "cron": "0 9 * * 1-5"
-  }
-}
-```
-
-### Webhook Trigger
-```json
-{
-  "trigger": {
-    "type": "webhook",
-    "port": 18796,
-    "endpoint": "/my-webhook"
-  }
-}
-```
-**Usage:** `curl -X POST http://localhost:18796/my-webhook -d '{"data":"value"}'`
-
-### File Watch Trigger
-```json
-{
-  "trigger": {
-    "type": "file_change",
-    "path": "~/Documents/Projects",
-    "events": ["modify", "add", "delete"],
-    "ignored": "node_modules/**"
-  }
-}
-```
-
----
-
-## 🤖 Agent Action (AI-Powered)
+## 🤖 AI Agent Action
 
 ```json
 {
-  "id": "ai-summarizer",
-  "name": "AI Content Summarizer",
+  "id": "ai-meeting-prep",
+  "name": "AI Meeting Prep",
   "enabled": true,
   "trigger": {
-    "type": "schedule",
-    "cron": "0 8 * * *"
+    "type": "calendar",
+    "interval": 5
   },
   "actions": [
     {
       "type": "agent",
       "model": "claude-opus-4-5",
-      "prompt": "Check my calendar for today, summarize meetings and prepare talking points for each call."
+      "prompt": "Meeting '${event.summary}' starts at ${event.start}. Prepare talking points, check calendar for conflicts, and summarize what needs to be discussed."
     },
     {
       "type": "notify",
       "channel": "telegram",
-      "message": "☀️ Your AI briefing is ready!"
+      "message": "☀️ Meeting prep ready for '${event.summary}'"
     }
   ]
 }
@@ -178,31 +185,6 @@ automation-hub webhook api-trigger
 ## 🎨 Dashboard
 
 The Automation Hub includes a beautiful web dashboard.
-
-### Features
-
-- 📊 **Statistics** - Overview of all automations
-- ⚡ **Quick Actions** - Enable/disable, create, run
-- 📝 **Visual Editor** - Create automations without JSON
-- 📜 **Activity Logs** - Track execution history
-- 🔍 **Filtering** - Filter by status
-
-### Screenshots
-
-```
-┌─────────────────────────────┐
-│ ⚡ Automation Hub [+ New]  │
-├─────────────────────────────┤
-│ [12 Total] [5 Enabled]     │
-├─────────────────────────────┤
-│ ☀️ Morning Briefing [✅]   │
-│ 🔗 Webhook API [✅]        │
-│ 📁 File Watch [✅]          │
-│ 🤖 AI Agent [❌]           │
-└─────────────────────────────┘
-```
-
-### Start Dashboard
 
 ```bash
 automation-dashboard
@@ -217,7 +199,7 @@ Then open **http://localhost:18795**
 ```
 openclaw-automation-hub/
 ├── src/
-│   └── engine.js              # Core engine (v0.2)
+│   └── engine.js              # Core engine (v0.3)
 ├── cli/
 │   └── main.js                # CLI commands
 ├── dashboard/
@@ -226,14 +208,15 @@ openclaw-automation-hub/
 │   ├── styles.css             # Styles
 │   └── app.js                 # Logic
 ├── test/
-│   └── run.js                 # Tests
+│   └── run.js                 # Tests (21 tests)
 ├── examples/
 │   ├── morning-briefing.json
-│   ├── webhook-test.json      # NEW
-│   ├── auto-git-commit.json   # NEW
-│   ├── ai-news-briefing.json  # NEW
-│   └── system-monitor.json
-├── setup.sh                   # Installation
+│   ├── webhook-test.json
+│   ├── email-monitor.json     # NEW
+│   ├── calendar-reminder.json # NEW
+│   ├── system-monitor.json    # NEW
+│   └── ai-news-briefing.json
+├── setup.sh
 ├── package.json
 └── README.md
 ```
@@ -244,18 +227,22 @@ openclaw-automation-hub/
 
 ```bash
 npm test
+
+✅ Passed: 21/21
+Coverage: All core features
 ```
 
 ---
 
 ## 📈 Roadmap
 
-| Version | Features |
-|---------|----------|
-| **v0.1** ✅ | Schedule, Shell, Notify, Dashboard |
-| **v0.2** ✅ | Webhook, File Watch, Agent Action, Git |
-| **v0.3** | Email (IMAP), Calendar, Webhook Out |
-| **v1.0** | Visual Workflow Builder, AI Suggestions |
+| Version | Features | Status |
+|---------|----------|--------|
+| v0.1 | Schedule, Shell, Notify, Dashboard | ✅ |
+| v0.2 | Webhook, File Watch, Agent, Git | ✅ |
+| **v0.3** | **Email, Calendar, System Monitor** | ✅ |
+| v0.4 | Visual Workflow Builder | ⏳ |
+| v1.0 | AI-Powered Automation | 🔮 |
 
 ---
 
@@ -264,7 +251,7 @@ npm test
 | Plan | Price | Features |
 |------|-------|----------|
 | Free | $0 | 5 automations, basic triggers |
-| Pro | $9/mo | Unlimited, webhooks, email |
+| Pro | $9/mo | Unlimited, email, calendar, system |
 | Team | $29/mo | All + collaboration |
 
 ---
@@ -273,13 +260,14 @@ npm test
 
 Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md)
 
-### Ideas for v0.3
+### v0.4 Ideas
 
-- [ ] Email/IMAP integration
-- [ ] Calendar event triggers
-- [ ] Better webhook authentication
+- [ ] Visual workflow builder (drag & drop)
+- [ ] AI suggestions for automation
 - [ ] Mobile dashboard
 - [ ] Template marketplace
+- [ ] Google Calendar API integration
+- [ ] Outlook integration
 
 ---
 

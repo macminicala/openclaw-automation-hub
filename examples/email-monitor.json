@@ -1,0 +1,37 @@
+{
+  "id": "email-monitor",
+  "name": "Email Monitor",
+  "enabled": false,
+  "description": "Monitor email inbox for important messages",
+  "trigger": {
+    "type": "email",
+    "host": "imap.gmail.com",
+    "port": 993,
+    "user": "your-email@gmail.com",
+    "folder": "INBOX",
+    "interval": 60
+  },
+  "conditions": [
+    {
+      "type": "sender",
+      "value": "boss@company.com"
+    },
+    {
+      "type": "keyword",
+      "match": "contains",
+      "value": "urgent"
+    }
+  ],
+  "actions": [
+    {
+      "type": "notify",
+      "channel": "telegram",
+      "message": "⚠️ Urgent email from boss!"
+    },
+    {
+      "type": "email_reply",
+      "subject": "Re: Urgent",
+      "body": "Thanks for letting me know. I'll check this right away."
+    }
+  ]
+}
