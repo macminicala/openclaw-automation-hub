@@ -7,7 +7,7 @@ set -e
 # Configuration
 SKILL_DIR="$HOME/.clawd/skills/automation-hub"
 BIN_DIR="$HOME/.clawd/bin"
-GITHUB_RAW="https://raw.githubusercontent.com/macminicala/openclaw-automation-hub/main"
+GITHUB_REPO="https://github.com/macminicala/openclaw-automation-hub.git"
 
 # Colors
 RED='\033[0;31m'
@@ -22,6 +22,7 @@ NC='\033[0m'
 log() { echo -e "${CYAN}[🤖]${NC} $1"; }
 success() { echo -e "${GREEN}✅ $1${NC}"; }
 warn() { echo -e "${YELLOW}⚠️  $1${NC}"; }
+error() { echo -e "${RED}❌ $1${NC}"; exit 1; }
 
 # Install
 install() {
@@ -29,16 +30,14 @@ install() {
     if [ ! -d "$SKILL_DIR" ]; then
         log "Installing Automation Hub..."
         mkdir -p "$HOME/.clawd/skills"
-        git clone https://github.com/macminicala/openclaw-automation-hub.git "$SKILL_DIR" 2>/dev/null || \
-            curl -sL "$GITHUB_RAW/install-skill.sh" -o "$SKILL_DIR/install.sh" || \
-            { error "Installation failed"; exit 1; }
+        git clone "$GITHUB_REPO" "$SKILL_DIR"
     else
         log "Updating Automation Hub..."
         cd "$SKILL_DIR"
         git pull origin main 2>/dev/null || warn "Could not update"
     fi
     
-    # Install dependencies
+    # Install dependencies (once)
     log "Installing dependencies..."
     cd "$SKILL_DIR"
     npm install 2>/dev/null || npm install

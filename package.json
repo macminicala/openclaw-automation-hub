@@ -11,8 +11,7 @@
     "start": "node src/engine.js",
     "cli": "node cli/main.js",
     "dashboard": "node dashboard/server.js",
-    "test": "node test/run.js",
-    "install": "chmod +x setup.sh && ./setup.sh"
+    "test": "node test/run.js"
   },
   "keywords": [
     "openclaw",
