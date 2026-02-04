@@ -713,6 +713,151 @@ body {
   font-weight: 600;
 }
 
+/* Simplified Modal Styles */
+.modal-simple .modal-body {
+  padding: 2rem;
+}
+
+.form-section {
+  margin-bottom: 2rem;
+}
+
+.form-section:last-of-type {
+  margin-bottom: 1.5rem;
+}
+
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+.help-text {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+  line-height: 1.5;
+}
+
+.help-text code {
+  background: var(--bg-elevated);
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-family: 'SF Mono', Monaco, monospace;
+}
+
+/* Action Selector */
+.action-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.action-option {
+  cursor: pointer;
+}
+
+.action-option input {
+  display: none;
+}
+
+.action-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  transition: all 0.2s;
+}
+
+.action-option input:checked + .action-card {
+  border-color: var(--accent-primary);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.action-card:hover {
+  border-color: var(--accent-hover);
+}
+
+.action-icon {
+  font-size: 1.5rem;
+}
+
+.action-label {
+  font-weight: 600;
+  flex: 1;
+}
+
+.action-desc {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* Action Fields */
+.action-fields {
+  margin-top: 1.25rem;
+  padding: 1.25rem;
+  background: var(--bg-elevated);
+  border-radius: 12px;
+}
+
+.action-field-group textarea {
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.action-field-group textarea:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+/* Cron Group */
+.cron-group {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--border);
+}
+
+/* Large Save Button */
+.btn-large {
+  padding: 1rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 12px;
+}
+
+.form-actions .btn-large {
+  min-width: 200px;
+}
+
+/* Card Schedule */
+.card-schedule {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+/* Card Action */
+.card-action {
+  background: var(--bg-elevated);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: var(--accent-primary);
+}
+
 /* Trigger Config */
 .trigger-config {
   background: var(--bg-elevated);

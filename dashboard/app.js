@@ -1,93 +1,26 @@
 /**
- * Automation Hub Dashboard v0.4 - JavaScript
- * Enhanced with Real-time Updates and Visual Workflow Builder
+ * Automation Hub Dashboard - Simplified JavaScript
  */
 
 const API_URL = '/api';
 let automations = {};
-let ws = null;
-let reconnectAttempts = 0;
-const MAX_RECONNECT_ATTEMPTS = 5;
+
+// Schedule presets with human-readable descriptions
+const SCHEDULE_PRESETS = {
+  'every-hour': { cron: '0 * * * *', desc: 'Runs at the start of every hour' },
+  'every-day-9am': { cron: '0 9 * * *', desc: 'Runs every day at 9:00 AM' },
+  'every-day-6pm': { cron: '0 18 * * *', desc: 'Runs every day at 6:00 PM' },
+  'every-monday': { cron: '0 8 * * 1', desc: 'Runs every Monday at 8:00 AM' },
+  'every-weekday': { cron: '0 9 * * 1-5', desc: 'Runs Monday-Friday at 9:00 AM' },
+  'every-month': { cron: '0 9 1 * *', desc: 'Runs on the 1st of every month at 9:00 AM' }
+};
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
   loadAutomations();
-  initWebSocket();
   setupEventListeners();
   logActivity('Dashboard connected', 'info');
 });
-
-// ============ WEBSOCKET ============
-
-function initWebSocket() {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${protocol}//${window.location.host}`;
-  
-  ws = new WebSocket(wsUrl);
-  
-  ws.onopen = () => {
-    console.log('[Dashboard] WebSocket connected');
-    reconnectAttempts = 0;
-    document.getElementById('realtime-badge').innerHTML = '<span class="pulse"></span> Connected';
-    document.getElementById('realtime-badge').style.display = 'flex';
-  };
-  
-  ws.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      handleWebSocketMessage(data);
-    } catch (e) {
-      console.error('[Dashboard] WS message error:', e);
-    }
-  };
-  
-  ws.onclose = () => {
-    console.log('[Dashboard] WebSocket disconnected');
-    document.getElementById('realtime-badge').innerHTML = '<span class="pulse" style="background:var(--warning)"></span> Reconnecting...';
-    attemptReconnect();
-  };
-  
-  ws.onerror = (error) => {
-    console.error('[Dashboard] WebSocket error:', error);
-  };
-}
-
-function handleWebSocketMessage(data) {
-  switch (data.type) {
-    case 'heartbeat':
-      // Connection alive
-      break;
-    case 'updated':
-      loadAutomations();
-      logActivity(`Automations updated (${data.count} total)`, 'info');
-      break;
-    case 'executed':
-      logActivity(`Automation "${data.id}" executed`, 'success');
-      loadAutomations();
-      showToast('Automation executed!', 'success');
-      break;
-    case 'error':
-      logActivity(`Error: ${data.message}`, 'error');
-      showToast(data.message, 'error');
-      break;
-  }
-}
-
-function attemptReconnect() {
-  if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-    reconnectAttempts++;
-    setTimeout(initWebSocket, 2000 * reconnectAttempts);
-  } else {
-    document.getElementById('realtime-badge').innerHTML = '<span class="pulse" style="background:var(--error)"></span> Offline';
-    logActivity('Real-time connection lost', 'warning');
-  }
-}
-
-function sendWSMessage(data) {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(data));
-  }
-}
 
 // ============ API FUNCTIONS ============
 
@@ -119,8 +52,8 @@ async function toggleAutomation(id, enabled) {
 async function runAutomation(id) {
   try {
     await fetch(`${API_URL}/automations/${id}/run`, { method: 'POST' });
-    sendWSMessage({ type: 'run', id });
     logActivity(`Triggered: ${id}`, 'info');
+    showToast('Automation executed!', 'success');
   } catch (error) {
     showToast('Run failed', 'error');
   }
@@ -147,21 +80,10 @@ async function saveAutomation(automation) {
       body: JSON.stringify(automation)
     });
     await loadAutomations();
-    logActivity(`Created: ${automation.name || automation.id}`, 'success');
+    logActivity(`Created: ${automation.name}`, 'success');
     showToast('Automation saved!', 'success');
   } catch (error) {
     showToast('Save failed: ' + error.message, 'error');
-  }
-}
-
-async function refreshLogs() {
-  try {
-    const response = await fetch(`${API_URL}/logs`);
-    const logs = await response.json();
-    renderLogs(logs);
-    logActivity('Logs refreshed', 'info');
-  } catch (error) {
-    showToast('Failed to load logs', 'error');
   }
 }
 
@@ -170,11 +92,6 @@ async function refreshLogs() {
 function updateStats(stats) {
   document.getElementById('stat-total').textContent = stats.total || 0;
   document.getElementById('stat-enabled').textContent = stats.enabled || 0;
-  document.getElementById('stat-disabled').textContent = stats.disabled || 0;
-  document.getElementById('stat-schedule').textContent = stats.byTrigger?.schedule || 0;
-  document.getElementById('stat-webhook').textContent = stats.byTrigger?.webhook || 0;
-  document.getElementById('stat-event').textContent = 
-    (stats.byTrigger?.email || 0) + (stats.byTrigger?.calendar || 0) + (stats.byTrigger?.system || 0);
 }
 
 function renderAutomations() {
@@ -192,28 +109,25 @@ function renderAutomations() {
   grid.style.display = 'grid';
   emptyState.style.display = 'none';
   
-  grid.innerHTML = list.map(automation => `
-    <div class="automation-card" onclick="event.stopPropagation()">
+  grid.innerHTML = list.map(automation => {
+    const actionType = automation.actions?.[0]?.type || 'unknown';
+    const actionDesc = getActionDescription(automation);
+    
+    return `
+    <div class="automation-card">
       <div class="card-header">
         <div>
-          <div class="card-title">${escapeHtml(automation.name || automation.id)}</div>
-          <div class="card-status ${automation.enabled ? 'enabled' : 'disabled'}">
-            <span class="status-dot"></span>
-            ${automation.enabled ? 'Enabled' : 'Disabled'}
-          </div>
+          <div class="card-title">${escapeHtml(automation.name)}</div>
+          <div class="card-schedule">⏰ ${getScheduleDescription(automation.trigger?.cron)}</div>
+        </div>
+        <div class="card-status ${automation.enabled ? 'enabled' : 'disabled'}">
+          <span class="status-dot"></span>
+          ${automation.enabled ? 'Active' : 'Paused'}
         </div>
       </div>
       
-      <div class="card-trigger trigger-${automation.trigger?.type || 'schedule'}">
-        ${getTriggerIcon(automation.trigger?.type)} ${getTriggerName(automation.trigger?.type)}
-        ${automation.trigger?.cron ? `· ${automation.trigger.cron}` : ''}
-        ${automation.trigger?.port ? `· :${automation.trigger.port}` : ''}
-      </div>
-      
-      <div class="card-actions-list">
-        ${(automation.actions || []).map(a => `
-          <span class="action-badge">${getActionIcon(a.type)} ${a.type}</span>
-        `).join('')}
+      <div class="card-action">
+        ${getActionIcon(actionType)} ${actionDesc}
       </div>
       
       <div class="card-actions">
@@ -231,245 +145,192 @@ function renderAutomations() {
         </button>
       </div>
     </div>
-  `).join('');
+  `}).join('');
 }
 
-function renderLogs(logs) {
-  const list = document.getElementById('logs-list');
+function getActionDescription(automation) {
+  const action = automation.actions?.[0];
+  if (!action) return 'No action configured';
   
-  if (logs.length === 0) {
-    list.innerHTML = '<div class="log-item log-info">No execution logs yet</div>';
-    return;
+  switch (action.type) {
+    case 'shell': return `Run: ${action.command || action.exec || 'command'}`;
+    case 'notify': return `Notify: ${action.message || 'message'}`;
+    case 'email': return `Email to: ${action.to || action.recipient || 'recipient'}`;
+    case 'agent': return 'AI Agent task';
+    default: return action.type;
+  }
+}
+
+function getScheduleDescription(cron) {
+  if (!cron) return 'No schedule';
+  
+  // Match common presets
+  for (const [key, val] of Object.entries(SCHEDULE_PRESETS)) {
+    if (val.cron === cron) return val.desc;
   }
   
-  list.innerHTML = logs.map(log => {
-    const type = log.result?.success ? 'success' : 'error';
-    const time = new Date(log.timestamp).toLocaleString();
-    return `
-      <div class="log-item log-${type}">
-        <span>${escapeHtml(log.automationId || 'unknown')}</span>
-        <span>${time}</span>
-      </div>
-    `;
-  }).join('');
+  return `Cron: ${cron}`;
+}
+
+function getActionIcon(type) {
+  const icons = {
+    shell: '💻',
+    notify: '📱',
+    email: '📧',
+    agent: '🤖',
+    git: '🔀'
+  };
+  return icons[type] || '⚡';
 }
 
 // ============ EVENT LISTENERS ============
 
 function setupEventListeners() {
   document.getElementById('automation-form').addEventListener('submit', handleFormSubmit);
-  
-  // Workflow builder drag and drop
-  setupDragAndDrop();
 }
 
 // ============ FORM HANDLERS ============
 
-// Schedule preset to cron mapping
-const SCHEDULE_PRESETS = {
-  'every-hour': '0 * * * *',
-  'every-day-9am': '0 9 * * *',
-  'every-day-6pm': '0 18 * * *',
-  'every-monday': '0 8 * * 1',
-  'every-tuesday': '0 8 * * 2',
-  'every-wednesday': '0 8 * * 3',
-  'every-thursday': '0 8 * * 4',
-  'every-friday': '0 8 * * 5',
-  'every-weekday': '0 9 * * 1-5',
-  'every-month': '0 9 1 * *',
-  'every-minute': '* * * * *'
-};
-
-const SCHEDULE_PREVIEWS = {
-  'every-hour': 'Runs at the start of every hour',
-  'every-day-9am': 'Runs every day at 9:00 AM',
-  'every-day-6pm': 'Runs every day at 6:00 PM',
-  'every-monday': 'Runs every Monday at 8:00 AM',
-  'every-tuesday': 'Runs every Tuesday at 8:00 AM',
-  'every-wednesday': 'Runs every Wednesday at 8:00 AM',
-  'every-thursday': 'Runs every Thursday at 8:00 AM',
-  'every-friday': 'Runs every Friday at 8:00 AM',
-  'every-weekday': 'Runs Monday-Friday at 9:00 AM',
-  'every-month': 'Runs on the 1st of every month at 9:00 AM',
-  'every-minute': 'Runs every minute (for testing)'
-};
-
-function updateTriggerFields() {
-  const type = document.getElementById('trigger-type').value;
-  document.querySelectorAll('.trigger-config').forEach(el => {
-    el.style.display = 'none';
-  });
-  document.querySelector(`.trigger-config[data-trigger="${type}"]`).style.display = 'block';
-  
-  // Show/hide cron field based on preset
-  if (type === 'schedule') {
-    updateSchedulePreset();
-  }
-}
-
 function updateSchedulePreset() {
   const preset = document.getElementById('schedule-preset').value;
-  const cronInput = document.getElementById('cron');
   const cronGroup = document.getElementById('cron-group');
-  const preview = document.getElementById('cron-preview');
+  const helpText = document.getElementById('schedule-help');
+  const cronInput = document.getElementById('cron');
   
   if (preset === 'custom') {
     cronGroup.style.display = 'block';
-    preview.textContent = 'Enter a cron expression';
-    preview.style.color = 'var(--text-muted)';
+    helpText.textContent = 'Enter your custom schedule';
+    cronInput.placeholder = '0 9 * * *';
   } else {
-    cronInput.value = SCHEDULE_PRESETS[preset];
-    preview.textContent = SCHEDULE_PREVIEWS[preset] || '';
-    preview.style.color = 'var(--success)';
+    cronGroup.style.display = 'none';
+    cronInput.value = SCHEDULE_PRESETS[preset].cron;
+    helpText.textContent = SCHEDULE_PRESETS[preset].desc;
   }
 }
 
-function addAction() {
-  const list = document.getElementById('actions-list');
-  const div = document.createElement('div');
-  div.className = 'action-item';
-  div.innerHTML = `
-    <select class="action-type">
-      <option value="shell">💻 Shell Command</option>
-      <option value="agent">🤖 AI Agent</option>
-      <option value="git">🔀 Git</option>
-      <option value="notify">📱 Notify</option>
-      <option value="email_reply">📧 Email Reply</option>
-    </select>
-    <input type="text" class="action-value" placeholder="Enter command or message">
-    <button type="button" class="btn-remove" onclick="this.parentElement.remove()">×</button>
-  `;
-  list.appendChild(div);
+function showActionFields(type) {
+  // Hide all action fields
+  document.querySelectorAll('.action-field-group').forEach(el => {
+    el.style.display = 'none';
+  });
+  
+  // Show selected action fields
+  const selected = document.getElementById(`action-${type}`);
+  if (selected) {
+    selected.style.display = 'block';
+  }
 }
 
 function handleFormSubmit(e) {
   e.preventDefault();
   
-  const triggerType = document.getElementById('trigger-type').value;
+  const name = document.getElementById('name').value.trim();
+  const preset = document.getElementById('schedule-preset').value;
+  const cron = preset === 'custom' 
+    ? document.getElementById('cron').value 
+    : SCHEDULE_PRESETS[preset].cron;
+  const actionType = document.querySelector('input[name="action-type"]:checked').value;
+  
+  // Build automation object
   const automation = {
-    id: document.getElementById('edit-id').value || 
-        document.getElementById('name').value.toLowerCase().replace(/\s+/g, '-'),
-    name: document.getElementById('name').value,
+    id: document.getElementById('edit-id').value || generateId(name),
+    name: name,
     enabled: true,
-    trigger: { type: triggerType },
+    trigger: {
+      type: 'schedule',
+      cron: cron
+    },
     actions: []
   };
   
-  // Build trigger config
-  switch (triggerType) {
-    case 'schedule':
-      automation.trigger.cron = document.getElementById('cron').value;
+  // Add action based on type
+  switch (actionType) {
+    case 'command':
+      const command = document.getElementById('command-input').value.trim();
+      if (!command) {
+        showToast('Please enter a command', 'error');
+        return;
+      }
+      automation.actions.push({ type: 'shell', command: command });
       break;
-    case 'webhook':
-      automation.trigger.port = parseInt(document.getElementById('webhook-port').value);
-      automation.trigger.endpoint = document.getElementById('webhook-endpoint').value;
+      
+    case 'notify':
+      const message = document.getElementById('notify-message').value.trim();
+      if (!message) {
+        showToast('Please enter a message', 'error');
+        return;
+      }
+      automation.actions.push({ type: 'notify', channel: 'telegram', message: message });
       break;
-    case 'file_change':
-      automation.trigger.path = document.getElementById('watch-path').value;
-      automation.trigger.events = [
-        document.getElementById('event-modify').checked ? 'modify' : null,
-        document.getElementById('event-add').checked ? 'add' : null,
-        document.getElementById('event-delete').checked ? 'delete' : null
-      ].filter(Boolean);
-      break;
+      
     case 'email':
-      automation.trigger.host = document.getElementById('email-host').value;
-      automation.trigger.user = document.getElementById('email-user').value;
-      automation.trigger.interval = parseInt(document.getElementById('email-interval').value);
-      break;
-    case 'calendar':
-      automation.trigger.provider = document.getElementById('calendar-provider').value;
-      automation.trigger.interval = parseInt(document.getElementById('calendar-interval').value);
-      break;
-    case 'system':
-      automation.trigger.cpuThreshold = parseInt(document.getElementById('sys-cpu').value);
-      automation.trigger.memoryThreshold = parseInt(document.getElementById('sys-mem').value);
-      automation.trigger.diskThreshold = parseInt(document.getElementById('sys-disk').value);
+      const to = document.getElementById('email-to').value.trim();
+      const subject = document.getElementById('email-subject').value.trim();
+      const body = document.getElementById('email-body').value.trim();
+      
+      if (!to || !subject || !body) {
+        showToast('Please fill in all email fields', 'error');
+        return;
+      }
+      automation.actions.push({ 
+        type: 'email', 
+        to: to, 
+        subject: subject, 
+        body: body 
+      });
       break;
   }
   
-  // Build actions
-  document.querySelectorAll('.action-item').forEach(item => {
-    const type = item.querySelector('.action-type').value;
-    const value = item.querySelector('.action-value').value;
-    
-    if (type === 'shell') {
-      automation.actions.push({ type: 'shell', command: value });
-    } else if (type === 'agent') {
-      automation.actions.push({ type: 'agent', prompt: value, model: 'claude-opus-4-5' });
-    } else if (type === 'git') {
-      automation.actions.push({ type: 'git', add: true, commit: 'Auto-commit: ${timestamp}', push: true });
-    } else if (type === 'notify') {
-      automation.actions.push({ type: 'notify', channel: 'telegram', message: value });
-    } else if (type === 'email_reply') {
-      automation.actions.push({ type: 'email_reply', subject: 'Re: ' + value, body: value });
-    }
-  });
-  
   saveAutomation(automation);
   closeModal();
+}
+
+function generateId(name) {
+  return name.toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
 }
 
 function editAutomation(id) {
   const a = automations[id];
   if (!a) return;
   
+  const action = a.actions?.[0];
+  
   document.getElementById('modal-title').textContent = 'Edit Automation';
   document.getElementById('edit-id').value = id;
   document.getElementById('name').value = a.name || id;
-  document.getElementById('trigger-type').value = a.trigger?.type || 'schedule';
   
-  // Show correct trigger fields
-  updateTriggerFields();
-  
-  // Populate trigger fields
-  const t = a.trigger;
-  if (t) {
-    if (t.cron) {
-      document.getElementById('cron').value = t.cron;
-      // Find matching preset
-      const preset = Object.entries(SCHEDULE_PRESETS).find(([k, v]) => v === t.cron);
-      if (preset) {
-        document.getElementById('schedule-preset').value = preset[0];
-      } else {
-        document.getElementById('schedule-preset').value = 'custom';
-      }
-      updateSchedulePreset();
+  // Set schedule preset
+  let preset = 'custom';
+  for (const [key, val] of Object.entries(SCHEDULE_PRESETS)) {
+    if (val.cron === a.trigger?.cron) {
+      preset = key;
+      break;
     }
-    if (t.port) document.getElementById('webhook-port').value = t.port;
-    if (t.endpoint) document.getElementById('webhook-endpoint').value = t.endpoint;
-    if (t.path) document.getElementById('watch-path').value = t.path;
-    if (t.host) document.getElementById('email-host').value = t.host;
-    if (t.user) document.getElementById('email-user').value = t.user;
   }
+  document.getElementById('schedule-preset').value = preset;
+  document.getElementById('cron').value = a.trigger?.cron || '';
+  updateSchedulePreset();
   
-  // Clear and populate actions
-  const list = document.getElementById('actions-list');
-  list.innerHTML = '';
-  if (a.actions && a.actions.length > 0) {
-    a.actions.forEach(action => {
-      const div = document.createElement('div');
-      div.className = 'action-item';
-      let value = '';
-      if (action.command) value = action.command;
-      else if (action.prompt) value = action.prompt;
-      else if (action.message) value = action.message;
-      
-      div.innerHTML = `
-        <select class="action-type">
-          <option value="shell" ${action.type === 'shell' ? 'selected' : ''}>💻 Shell Command</option>
-          <option value="agent" ${action.type === 'agent' ? 'selected' : ''}>🤖 AI Agent</option>
-          <option value="git" ${action.type === 'git' ? 'selected' : ''}>🔀 Git</option>
-          <option value="notify" ${action.type === 'notify' ? 'selected' : ''}>📱 Notify</option>
-          <option value="email_reply" ${action.type === 'email_reply' ? 'selected' : ''}>📧 Email Reply</option>
-        </select>
-        <input type="text" class="action-value" value="${escapeHtml(value)}">
-        <button type="button" class="btn-remove" onclick="this.parentElement.remove()">×</button>
-      `;
-      list.appendChild(div);
-    });
-  } else {
-    addAction();
+  // Set action type and fields
+  if (action) {
+    const radio = document.querySelector(`input[name="action-type"][value="${action.type === 'shell' ? 'command' : action.type}"]`);
+    if (radio) {
+      radio.checked = true;
+      showActionFields(action.type === 'shell' ? 'command' : action.type);
+    }
+    
+    // Fill action fields
+    if (action.type === 'shell' || action.command) {
+      document.getElementById('command-input').value = action.command || action.exec || '';
+    } else if (action.type === 'notify') {
+      document.getElementById('notify-message').value = action.message || '';
+    } else if (action.type === 'email') {
+      document.getElementById('email-to').value = action.to || '';
+      document.getElementById('email-subject').value = action.subject || '';
+      document.getElementById('email-body').value = action.body || '';
+    }
   }
   
   openModal();
@@ -477,15 +338,18 @@ function editAutomation(id) {
 
 // ============ MODAL ============
 
-function openModal() {
-  document.getElementById('modal-title').textContent = 'New Automation';
+function openNewAutomation() {
+  document.getElementById('modal-title').textContent = 'Create Automation';
   document.getElementById('automation-form').reset();
   document.getElementById('edit-id').value = '';
-  document.getElementById('trigger-type').value = 'schedule';
+  
+  // Reset to defaults
   document.getElementById('schedule-preset').value = 'every-day-9am';
-  updateTriggerFields();
-  document.getElementById('actions-list').innerHTML = '';
-  addAction();
+  updateSchedulePreset();
+  
+  // Reset action selection
+  document.querySelector('input[name="action-type"][value="command"]').checked = true;
+  showActionFields('command');
   
   document.getElementById('modal-overlay').classList.add('active');
   document.getElementById('modal').classList.add('active');
@@ -496,78 +360,13 @@ function closeModal() {
   document.getElementById('modal').classList.remove('active');
 }
 
-// ============ TABS ============
-
-function switchTab(tab) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-  
-  document.querySelector(`.tab[data-tab="${tab}"]`).classList.add('active');
-  document.getElementById(`tab-${tab}`).classList.add('active');
-  
-  if (tab === 'logs') {
-    refreshLogs();
-  }
-}
-
-// ============ WORKFLOW BUILDER ============
-
-function openWorkflowBuilder() {
-  switchTab('builder');
-}
-
-function setupDragAndDrop() {
-  document.querySelectorAll('.palette-item').forEach(item => {
-    item.addEventListener('dragstart', (e) => {
-      e.dataTransfer.setData('type', e.target.dataset.trigger || e.target.dataset.condition || e.target.dataset.action);
-      e.dataTransfer.setData('category', e.target.parentElement.previousElementSibling?.textContent?.trim() || 'Item');
-    });
-  });
-}
-
 // ============ UTILITY ============
 
 function escapeHtml(text) {
   if (!text) return '';
   const div = document.createElement('div');
-  div.textContent = text || '';
+  div.textContent = text;
   return div.innerHTML;
-}
-
-function getTriggerIcon(type) {
-  const icons = {
-    schedule: '⏰',
-    webhook: '🔗',
-    file_change: '📁',
-    email: '📧',
-    calendar: '📅',
-    system: '🖥️'
-  };
-  return icons[type] || '⚡';
-}
-
-function getTriggerName(type) {
-  const names = {
-    schedule: 'Schedule',
-    webhook: 'Webhook',
-    file_change: 'File Watch',
-    email: 'Email',
-    calendar: 'Calendar',
-    system: 'System'
-  };
-  return names[type] || type;
-}
-
-function getActionIcon(type) {
-  const icons = {
-    shell: '💻',
-    agent: '🤖',
-    git: '🔀',
-    notify: '📱',
-    email_reply: '📧',
-    webhook_out: '🌐'
-  };
-  return icons[type] || '🎯';
 }
 
 function logActivity(message, type = 'info') {
