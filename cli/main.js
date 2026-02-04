@@ -41,6 +41,20 @@ const commands = {
     });
   },
 
+  async install() {
+    const { spawn } = require('child_process');
+    console.log('\n🔄 Running installation...\n');
+    
+    const install = spawn('bash', ['install.sh'], {
+      cwd: path.dirname(__dirname),
+      stdio: 'inherit'
+    });
+    
+    install.on('error', (err) => {
+      console.log(`❌ Error: ${err.message}`);
+    });
+  },
+
   async list() {
     const engine = getEngine();
     const automations = Array.from(engine.automations.values());
@@ -197,8 +211,9 @@ if (cmd === 'create') {
   console.log('\nUsage: automationhub <command> [options]');
   console.log('\nCommands:');
   console.log('  dashboard           Start dashboard');
-  console.log('  list                List all automations');
-  console.log('  create --name X     Create new automation');
+  console.log('  install            Install/update Automation Hub');
+  console.log('  list               List all automations');
+  console.log('  create --name X    Create new automation');
   console.log('  enable <id>         Enable automation');
   console.log('  disable <id>        Disable automation');
   console.log('  delete <id>         Delete automation');
