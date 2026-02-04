@@ -1,28 +1,26 @@
 {
   "id": "auto-git-commit",
-  "name": "Auto Git Commit",
+  "name": "Auto Git Commit on File Change",
   "enabled": false,
-  "description": "Automatically commit changes at 6PM on weekdays",
+  "description": "Automatically commit changes when files are modified",
   "trigger": {
-    "type": "schedule",
-    "cron": "0 18 * * 1-5"
+    "type": "file_change",
+    "path": "~/clawd",
+    "events": ["modify", "add"],
+    "ignored": "node_modules/**"
   },
-  "conditions": [
-    {
-      "type": "time_range",
-      "start": "17:00",
-      "end": "20:00"
-    }
-  ],
+  "conditions": [],
   "actions": [
     {
-      "type": "shell",
-      "command": "cd ~/clawd && git add -A && git commit -m 'Auto backup: $(date +%Y-%m-%d %H:%M)' && git push origin main"
+      "type": "git",
+      "add": true,
+      "commit": "Auto-update: ${timestamp}",
+      "push": true
     },
     {
       "type": "notify",
       "channel": "telegram",
-      "message": "✅ Git auto-commit completed"
+      "message": "🔄 Git auto-commit executed"
     }
   ]
 }

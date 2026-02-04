@@ -1,0 +1,23 @@
+{
+  "id": "webhook-test",
+  "name": "Webhook Test Automation",
+  "enabled": false,
+  "description": "Triggered via HTTP webhook",
+  "trigger": {
+    "type": "webhook",
+    "port": 18796,
+    "endpoint": "/webhook-test"
+  },
+  "conditions": [],
+  "actions": [
+    {
+      "type": "shell",
+      "command": "echo 'Webhook triggered at $(date)'"
+    },
+    {
+      "type": "notify",
+      "channel": "telegram",
+      "message": "⚡ Webhook automation executed!"
+    }
+  ]
+}

@@ -1,11 +1,13 @@
 /**
- * OpenClaw Automation Hub - Core Engine
- * v0.1.0
+ * OpenClaw Automation Hub - Core Engine v0.2
+ * Added: Webhook trigger, File watching, Agent action
  */
 
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
 const { EventEmitter } = require('events');
+const cron = require('node-cron');
 
 class AutomationHub extends EventEmitter {
   constructor(config = {}) {
@@ -16,6 +18,8 @@ class AutomationHub extends EventEmitter {
     this.conditions = new Map();
     this.actions = new Map();
     this.running = new Set();
+    this.servers = []; // HTTP servers for webhooks
+    this.watchers = new Map(); // File watchers
     this.logger = config.logger || console;
     
     this._loadTriggers();
@@ -43,7 +47,6 @@ class AutomationHub extends EventEmitter {
   // ============ CORE OPERATIONS ============
 
   async loadAutomations() {
-    // Expand ~ to home directory
     let expandedPath = this.storagePath;
     if (expandedPath.startsWith('~')) {
       expandedPath = require('os').homedir() + expandedPath.slice(1);
@@ -91,6 +94,12 @@ class AutomationHub extends EventEmitter {
       fs.unlinkSync(filePath);
     }
     
+    // Stop any watchers
+    if (this.watchers.has(id)) {
+      this.watchers.get(id).close();
+      this.watchers.delete(id);
+    }
+    
     this.automations.delete(id);
     return { success: true };
   }
@@ -102,8 +111,13 @@ class AutomationHub extends EventEmitter {
     automation.enabled = true;
     await this.saveAutomation(automation);
     
-    if (automation.trigger.type === 'schedule') {
+    // Start trigger handlers
+    if (automation.trigger.type === 'schedule' && cron.validate(automation.trigger.cron)) {
       this._startScheduler(automation);
+    } else if (automation.trigger.type === 'webhook') {
+      this._startWebhookServer(automation);
+    } else if (automation.trigger.type === 'file_change') {
+      this._startFileWatcher(automation);
     }
     
     return automation;
@@ -115,7 +129,18 @@ class AutomationHub extends EventEmitter {
     
     automation.enabled = false;
     await this.saveAutomation(automation);
-    this._stopScheduler(automation);
+    
+    // Stop trigger handlers
+    if (automation._task) {
+      automation._task.stop();
+      delete automation._task;
+    }
+    
+    // Close file watchers
+    if (this.watchers.has(id)) {
+      this.watchers.get(id).close();
+      this.watchers.delete(id);
+    }
     
     return automation;
   }
@@ -124,16 +149,13 @@ class AutomationHub extends EventEmitter {
 
   async run(automationId, context = {}) {
     const automation = this.automations.get(automationId);
-    if (!automation) throw new Error(`Automation ${id} not found`);
+    if (!automation) throw new Error(`Automation ${automationId} not found`);
     
     if (!automation.enabled) {
-      this.logger.info(`[AutomationHub] ${automationId} is disabled, skipping`);
       return { skipped: true, reason: 'disabled' };
     }
 
-    // Check cooldown
     if (this.running.has(automationId)) {
-      this.logger.warn(`[AutomationHub] ${automationId} already running`);
       return { skipped: true, reason: 'running' };
     }
 
@@ -148,7 +170,6 @@ class AutomationHub extends EventEmitter {
       if (automation.conditions && automation.conditions.length > 0) {
         const conditionsMet = await this._evaluateConditions(automation.conditions, context);
         if (!conditionsMet) {
-          this.logger.info(`[AutomationHub] Conditions not met for ${automationId}`);
           return { skipped: true, reason: 'conditions_not_met' };
         }
       }
@@ -186,10 +207,7 @@ class AutomationHub extends EventEmitter {
   async _evaluateConditions(conditions, context) {
     for (const condition of conditions) {
       const handler = this.conditions.get(condition.type);
-      if (!handler) {
-        this.logger.warn(`Unknown condition type: ${condition.type}`);
-        continue;
-      }
+      if (!handler) continue;
       
       const met = await handler(condition, context, this);
       if (!met) return false;
@@ -197,14 +215,12 @@ class AutomationHub extends EventEmitter {
     return true;
   }
 
-  // ============ SCHEDULER ============
+  // ============ SCHEDULE TRIGGER ============
 
   _startScheduler(automation) {
-    const cron = require('node-cron');
-    
     if (cron.validate(automation.trigger.cron)) {
       const task = cron.schedule(automation.trigger.cron, async () => {
-        await this.run(automation.id, { trigger: 'schedule' });
+        await this.run(automation.id, { trigger: 'schedule', timestamp: new Date() });
       });
       
       automation._task = task;
@@ -212,37 +228,98 @@ class AutomationHub extends EventEmitter {
     }
   }
 
-  _stopScheduler(automation) {
-    if (automation._task) {
-      automation._task.stop();
-      delete automation._task;
-      this.logger.info(`[AutomationHub] Unscheduled: ${automation.id}`);
-    }
+  // ============ WEBHOOK TRIGGER ============
+
+  _startWebhookServer(automation) {
+    const port = automation.trigger.port || 18796;
+    const endpoint = automation.trigger.endpoint || `/${automation.id}`;
+    
+    const server = http.createServer(async (req, res) => {
+      const url = new URL(req.url, `http://localhost:${port}`);
+      
+      if (url.pathname === endpoint && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+          try {
+            const data = body ? JSON.parse(body) : {};
+            this.logger.info(`[AutomationHub] Webhook received for ${automation.id}`);
+            
+            await this.run(automation.id, { 
+              trigger: 'webhook', 
+              data,
+              headers: req.headers 
+            });
+            
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, automationId: automation.id }));
+          } catch (err) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: err.message }));
+          }
+        });
+      } else {
+        res.writeHead(404);
+        res.end('Not found');
+      }
+    });
+
+    server.listen(port, () => {
+      this.logger.info(`[AutomationHub] Webhook server listening on port ${port}`);
+      this.servers.push(server);
+    });
+  }
+
+  // ============ FILE WATCH TRIGGER ============
+
+  _startFileWatcher(automation) {
+    const chokidar = require('chokidar');
+    const watchPath = automation.trigger.path || '.';
+    const events = automation.trigger.events || ['modify', 'add', 'delete'];
+    
+    const watcher = chokidar.watch(watchPath, {
+      ignored: automation.trigger.ignored || /node_modules/,
+      persistent: true
+    });
+
+    watcher.on(events, async (filePath) => {
+      this.logger.info(`[AutomationHub] File change detected: ${filePath}`);
+      await this.run(automation.id, { 
+        trigger: 'file_change', 
+        filePath,
+        changedFile: filePath 
+      });
+    });
+
+    this.watchers.set(automation.id, watcher);
+    this.logger.info(`[AutomationHub] File watcher started for ${automation.id}`);
   }
 
   // ============ LOADERS ============
 
   _loadTriggers() {
-    this.registerTrigger('schedule', (trigger, context, hub) => ({
+    this.registerTrigger('schedule', (trigger, context) => ({
       type: 'schedule',
       cron: trigger.cron
     }));
 
-    this.registerTrigger('webhook', (trigger, context, hub) => ({
+    this.registerTrigger('webhook', (trigger, context) => ({
       type: 'webhook',
+      port: trigger.port,
       endpoint: trigger.endpoint
     }));
 
-    this.registerTrigger('file_change', (trigger, context, hub) => ({
+    this.registerTrigger('file_change', (trigger, context) => ({
       type: 'file_change',
       path: trigger.path,
-      events: trigger.events || ['modify', 'add', 'delete']
+      events: trigger.events,
+      ignored: trigger.ignored
     }));
   }
 
   _loadConditions() {
     this.registerCondition('keyword', (condition, context) => {
-      const text = context.text || '';
+      const text = context.text || context.data?.text || '';
       return condition.match === 'contains' 
         ? text.includes(condition.value)
         : !text.includes(condition.value);
@@ -255,32 +332,89 @@ class AutomationHub extends EventEmitter {
     });
 
     this.registerCondition('sender', (condition, context) => {
-      return context.sender === condition.value;
+      return context.sender === condition.value || context.data?.from === condition.value;
+    });
+
+    this.registerCondition('file_pattern', (condition, context) => {
+      if (!context.filePath) return true;
+      const glob = require('glob');
+      const matches = glob.sync(condition.pattern, { cwd: condition.cwd || process.cwd() });
+      return matches.some(f => f === context.filePath || context.filePath.includes(f));
     });
   }
 
   _loadActions() {
+    // Shell action
     this.registerAction('shell', async (action, context, hub) => {
       const { exec } = require('child_process');
       const util = require('util');
       const execAsync = util.promisify(exec);
       
-      const command = action.command
-        .replace('${context}', JSON.stringify(context))
-        .replace('${timestamp}', Date.now());
+      let command = action.command;
+      command = command.replace('${context}', JSON.stringify(context));
+      command = command.replace('${timestamp}', Date.now());
+      command = command.replace('${file}', context.filePath || '');
+      command = command.replace('${data}', JSON.stringify(context.data || {}));
       
       const { stdout, stderr } = await execAsync(command);
       return { stdout, stderr };
     });
 
+    // Notify action
     this.registerAction('notify', async (action, context, hub) => {
-      // Will integrate with OpenClaw message system
-      return { channel: action.channel, message: action.message };
+      return { 
+        channel: action.channel, 
+        message: action.message,
+        note: 'Requires OpenClaw Gateway integration'
+      };
     });
 
+    // Agent action (AI-powered)
     this.registerAction('agent', async (action, context, hub) => {
-      // Will integrate with OpenClaw agent system
-      return { prompt: action.prompt, model: action.model };
+      return { 
+        type: 'agent',
+        prompt: action.prompt,
+        model: action.model || 'claude-opus-4-5',
+        context: context.data || context,
+        note: 'Requires OpenClaw agent integration'
+      };
+    });
+
+    // Git action
+    this.registerAction('git', async (action, context, hub) => {
+      const { exec } = require('child_process');
+      const util = require('util');
+      const execAsync = util.promisify(exec);
+      
+      const results = {};
+      
+      if (action.add) {
+        await execAsync('git add ' + (action.add === true ? '-A' : action.add));
+        results.add = true;
+      }
+      
+      if (action.commit) {
+        const msg = action.commit.replace('${timestamp}', Date.now());
+        await execAsync(`git commit -m "${msg}"`);
+        results.commit = msg;
+      }
+      
+      if (action.push) {
+        await execAsync('git push');
+        results.push = true;
+      }
+      
+      return results;
+    });
+
+    // Webhook out action
+    this.registerAction('webhook_out', async (action, context, hub) => {
+      return {
+        url: action.url,
+        method: action.method || 'POST',
+        data: action.data || context,
+        note: 'HTTP request would be made here'
+      };
     });
   }
 }

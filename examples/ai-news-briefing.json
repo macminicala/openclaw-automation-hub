@@ -1,0 +1,33 @@
+{
+  "id": "ai-news-briefing",
+  "name": "AI News Briefing",
+  "enabled": false,
+  "description": "Fetch AI news and summarize with AI agent",
+  "trigger": {
+    "type": "schedule",
+    "cron": "0 9 * * 1-5"
+  },
+  "conditions": [
+    {
+      "type": "time_range",
+      "start": "08:00",
+      "end": "10:00"
+    }
+  ],
+  "actions": [
+    {
+      "type": "agent",
+      "model": "claude-opus-4-5",
+      "prompt": "Read latest tweets from @karpathy, @demishassabis, and @AnthropicAI. Summarize the top 3 AI news items in Italian, under 200 words. Format as a clean briefing."
+    },
+    {
+      "type": "shell",
+      "command": "mkdir -p ~/clawd/memory && echo 'AI News - $(date +%Y-%m-%d)' > ~/clawd/memory/daily-ai-news.md"
+    },
+    {
+      "type": "notify",
+      "channel": "telegram",
+      "message": "📰 Daily AI News briefing ready!"
+    }
+  ]
+}

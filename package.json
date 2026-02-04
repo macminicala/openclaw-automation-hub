@@ -1,7 +1,7 @@
 {
   "name": "openclaw-automation-hub",
-  "version": "0.1.0",
-  "description": "AI-native automation engine for OpenClaw",
+  "version": "0.2.0",
+  "description": "AI-native automation engine for OpenClaw. v0.2 adds webhook, file watch, and AI agent support.",
   "main": "src/engine.js",
   "bin": {
     "automation-hub": "cli/main.js",
@@ -14,6 +14,18 @@
     "test": "node test/run.js",
     "install": "chmod +x setup.sh && ./setup.sh"
   },
-  "keywords": ["openclaw", "automation"],
-  "license": "MIT"
+  "keywords": [
+    "openclaw",
+    "automation",
+    "workflows",
+    "webhook",
+    "ai",
+    "local"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "node-cron": "^3.0.3",
+    "chokidar": "^3.6.0",
+    "glob": "^10.3.10"
+  }
 }
