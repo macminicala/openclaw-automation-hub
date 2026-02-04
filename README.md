@@ -4,11 +4,10 @@
 
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Node](https://img.shields.io/badge/Node.js-18+-green.svg)
-![OpenClaw](https://img.shields.io/badge/OpenClaw-Skill-blue.svg)
 
-**AI-native automation engine for OpenClaw.** Transform your personal AI assistant from reactive to proactive.
+**AI-native automation engine for OpenClaw.** Transform your personal AI assistant from proactive automation.
 
-[GitHub](https://github.com/macminicala/openclaw-automation-hub) • [Discord](https://discord.gg/clawd)
+[GitHub](https://github.com/macminicala/openclaw-automation-hub)
 
 </div>
 
@@ -16,71 +15,50 @@
 
 ## 🚀 Quick Install
 
-### Interactive Wizard (Recommended)
-
 ```bash
-# Download and run the wizard
-bash automation-hub-wizard.sh
-```
+# Clone and install
+git clone https://github.com/macminicala/openclaw-automation-hub.git ~/.clawd/skills/automation-hub
+cd ~/.clawd/skills/automation-hub
+bash install.sh
 
-Or for quick install:
-```bash
-bash automation-hub-wizard.sh --quick
+# Or use the installer
+curl -fsSL https://raw.githubusercontent.com/macminicala/openclaw-automation-hub/main/install.sh | bash
 ```
-
-### What the wizard does:
-1. ✅ Checks Node.js
-2. ✅ Clones/installs Automation Hub
-3. ✅ Installs dependencies
-4. ✅ Runs 31 tests
-5. ✅ Creates demo automations
 
 ---
 
-## 📦 Installation
+## 📦 Commands
 
-### Method 1: Clone & Run Wizard
-
-```bash
-# Clone
-git clone https://github.com/macminicala/openclaw-automation-hub.git
-cd openclaw-automation-hub
-
-# Run wizard
-bash automation-hub-wizard.sh
-```
-
-### Method 2: Manual Install
+After installation, use the `automationhub` command:
 
 ```bash
-# Clone to OpenClaw skills
-git clone https://github.com/macminicala/openclaw-automation-hub.git ~/.openclaw/skills/automation-hub
-cd ~/.openclaw/skills/automation-hub
-
-# Install deps
-npm install
-
-# Run tests
-npm test
+automationhub help           # Show help
+automationhub status        # Show status
+automationhub install       # Install/update
+automationhub test          # Run tests
+automationhub list          # List automations
+automationhub enable <id>   # Enable automation
+automationhub disable <id>  # Disable automation
+automationhub test <id>     # Test automation
+automationhub dashboard     # Start dashboard
+automationhub create       # Create automation
 ```
 
 ---
 
 ## 🌐 Dashboard
 
-Start the dashboard:
 ```bash
-cd ~/.openclaw/skills/automation-hub
-node dashboard/server.js
+automationhub dashboard
 ```
 
-Open **http://localhost:18795**
+Then open **http://localhost:18795**
 
 ```
 ┌─────────────────────────────────────────┐
-│ ⚡ Automation Hub v0.4             [+ New] │
+│ ⚡ Automation Hub v0.4                  │
 ├─────────────────────────────────────────┤
-│ [3 automations created]                 │
+│ [3 automations]                        │
 │ ☀️ Morning Briefing [❌]                │
 │ 🔗 Webhook Test [❌]                   │
 └─────────────────────────────────────────┘
@@ -90,7 +68,8 @@ Open **http://localhost:18795**
 
 ## ✨ Features
 
-| Trigger | Description |
+### Triggers
+| Command | Description |
 |---------|-------------|
 | `schedule` | Time-based (cron) |
 | `webhook` | HTTP endpoint |
@@ -99,49 +78,30 @@ Open **http://localhost:18795**
 | `calendar` | Event reminders |
 | `system` | CPU/Memory alerts |
 
+### Actions
+| Action | Description |
+|--------|-------------|
+| `shell` | Execute commands |
+| `agent` | AI-powered automation |
+| `git` | Auto-commit/push |
+| `notify` | Send to channels |
+
 ---
 
-## 📖 Usage
-
-### CLI Commands
+## 📋 Examples
 
 ```bash
 # List automations
-node cli/main.js list
+automationhub list
 
-# Create automation
-node cli/main.js create --name "Morning" --cron "0 9 * * *"
+# Enable an automation
+automationhub enable morning-briefing
 
-# Enable/Disable
-node cli/main.js enable morning-briefing
-node cli/main.js disable morning-briefing
+# Test an automation
+automationhub test webhook-test
 
-# Test
-node cli/main.js test morning-briefing
-```
-
-### Webhook Example
-
-```bash
-# Enable webhook automation
-node cli/main.js enable webhook-test
-
-# Trigger it
-curl -X POST http://localhost:18796/webhook-test \
-  -H "Content-Type: application/json" \
-  -d '{"test": true}'
-```
-
----
-
-## 🧪 Testing
-
-```bash
-npm test
-
-✅ Passed: 31
-✅ Failed: 0
-🎉 All tests passed!
+# Start dashboard
+automationhub dashboard
 ```
 
 ---
@@ -150,54 +110,27 @@ npm test
 
 ```
 automation-hub/
-├── automation-hub-wizard.sh   # ⭐ Interactive setup wizard
-├── automation-hub.sh         # Full-featured wizard with menu
-├── src/
-│   └── engine.js             # Core engine
-├── cli/
-│   └── main.js               # CLI commands
-├── dashboard/
-│   ├── server.js            # Dashboard server
-│   ├── index.html           # Dashboard UI
-│   ├── styles.css           # Styles
-│   └── app.js              # Dashboard logic
-├── test/
-│   └── run.js              # 31 tests
-├── examples/
-│   └── *.json              # Example automations
-├── SKILL.md                 # OpenClaw skill metadata
-└── package.json
+├── automationhub         ⭐ CLI command
+├── install.sh          ⭐ Install script
+├── src/engine.js       # Core engine
+├── cli/main.js         # CLI implementation
+├── dashboard/          # Web dashboard
+│   ├── server.js     # HTTP + WebSocket
+│   └── index.html     # Dashboard UI
+├── test/run.js        # 31 tests
+└── examples/          # Example automations
 ```
 
 ---
 
-## 📋 Automation Example
+## 🧪 Testing
 
-```json
-{
-  "id": "morning-briefing",
-  "name": "Morning Briefing",
-  "enabled": true,
-  "trigger": {
-    "type": "schedule",
-    "cron": "0 8 * * 1-5"
-  },
-  "actions": [
-    {
-      "type": "shell",
-      "command": "echo '☀️ Good morning!'"
-    }
-  ]
-}
+```bash
+automationhub test
+
+✅ Passed: 31
+✅ Failed: 0
 ```
-
----
-
-## 🤝 Contributing
-
-Issues and PRs welcome!
-
-https://github.com/macminicala/openclaw-automation-hub/issues
 
 ---
 
@@ -209,8 +142,6 @@ MIT
 
 <div align="center">
 
-**Built for the OpenClaw community** 🦞
-
-[GitHub](https://github.com/macminicala/openclaw-automation-hub) • [Discord](https://discord.gg/clawd)
+**Built for the OpenClaw community**
 
 </div>

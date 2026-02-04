@@ -1,0 +1,204 @@
+#!/bin/bash
+# Automation Hub CLI - Usage: automationhub <command>
+# Put this in your PATH as: automationhub
+
+set -e
+
+# Configuration
+SKILL_DIR="$HOME/.clawd/skills/automation-hub"
+AUTOMATIONS_DIR="$HOME/.openclaw/automations"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
+NC='\033[0m'
+
+# Functions
+log() { echo -e "${CYAN}[🤖]${NC} $1"; }
+success() { echo -e "${GREEN}✅ $1${NC}"; }
+warn() { echo -e "${YELLOW}⚠️  $1${NC}"; }
+error() { echo -e "${RED}❌ $1${NC}"; exit 1; }
+
+# Help
+show_help() {
+    echo ""
+    echo -e "${MAGENTA}⚡ Automation Hub CLI${NC}"
+    echo ""
+    echo "Usage: automationhub <command>"
+    echo ""
+    echo "Commands:"
+    echo "  install      Install/update Automation Hub"
+    echo "  test         Run tests"
+    echo "  list         List automations"
+    echo "  enable <id>   Enable an automation"
+    echo "  disable <id>  Disable an automation"
+    echo "  test <id>     Test an automation"
+    echo "  create       Create new automation"
+    echo "  dashboard     Start dashboard"
+    echo "  status       Show status"
+    echo "  help         Show this help"
+    echo ""
+}
+
+# Check skill directory
+check_skill_dir() {
+    if [ ! -d "$SKILL_DIR" ]; then
+        error "Automation Hub not found. Run: automationhub install"
+    fi
+}
+
+# Install command
+cmd_install() {
+    log "Installing Automation Hub..."
+    
+    if [ ! -d "$HOME/.clawd/skills/automation-hub" ]; then
+        log "Cloning Automation Hub..."
+        mkdir -p "$HOME/.clawd/skills"
+        git clone https://github.com/macminicala/openclaw-automation-hub.git "$SKILL_DIR" 2>/dev/null || {
+            error "Clone failed. Check internet connection."
+        }
+    else
+        log "Updating Automation Hub..."
+        cd "$SKILL_DIR"
+        git pull origin main 2>/dev/null || warn "Could not update."
+    fi
+    
+    # Install deps
+    log "Installing dependencies..."
+    cd "$SKILL_DIR"
+    npm install 2>/dev/null || npm install
+    
+    # Create automations dir
+    mkdir -p "$AUTOMATIONS_DIR"
+    
+    success "Automation Hub ready!"
+}
+
+# Test command
+cmd_test() {
+    check_skill_dir
+    cd "$SKILL_DIR"
+    npm test
+}
+
+# List command
+cmd_list() {
+    check_skill_dir
+    log "Automations:"
+    echo ""
+    node "$SKILL_DIR/cli/main.js" list
+}
+
+# Enable command
+cmd_enable() {
+    check_skill_dir
+    [ -z "$2" ] && { error "Usage: automationhub enable <id>"; }
+    node "$SKILL_DIR/cli/main.js" enable "$2"
+}
+
+# Disable command
+cmd_disable() {
+    check_skill_dir
+    [ -z "$2" ] && { error "Usage: automationhub disable <id>"; }
+    node "$SKILL_DIR/cli/main.js" disable "$2"
+}
+
+# Test single automation
+cmd_test_single() {
+    check_skill_dir
+    [ -z "$2" ] && { error "Usage: automationhub test <id>"; }
+    node "$SKILL_DIR/cli/main.js" test "$2"
+}
+
+# Create command
+cmd_create() {
+    check_skill_dir
+    node "$SKILL_DIR/cli/main.js" create "$@"
+}
+
+# Dashboard command
+cmd_dashboard() {
+    check_skill_dir
+    log "Starting Automation Hub Dashboard..."
+    echo ""
+    echo -e "${GREEN}🌐 Dashboard: http://localhost:18795${NC}"
+    echo ""
+    cd "$SKILL_DIR"
+    node dashboard/server.js
+}
+
+# Status command
+cmd_status() {
+    check_skill_dir
+    
+    echo ""
+    echo -e "${MAGENTA}⚡ Automation Hub Status${NC}"
+    echo ""
+    
+    echo -e "📁 Location: ${CYAN}$SKILL_DIR${NC}"
+    echo -e "📋 Automations: ${CYAN}$AUTOMATIONS_DIR${NC}"
+    echo ""
+    
+    # Count automations
+    if [ -d "$AUTOMATIONS_DIR" ]; then
+        TOTAL=$(ls -1 "$AUTOMATIONS_DIR"/*.json 2>/dev/null | wc -l)
+        ENABLED=$(grep -l '"enabled": true' "$AUTOMATIONS_DIR"/*.json 2>/dev/null | wc -l)
+        DISABLED=$((TOTAL - ENABLED))
+        
+        echo -e "📊 Total: ${CYAN}$TOTAL${NC}"
+        echo -e "🟢 Enabled: ${GREEN}$ENABLED${NC}"
+        echo -e "🔴 Disabled: ${YELLOW}$DISABLED${NC}"
+    else
+        echo -e "📋 No automations yet. Run: ${CYAN}automationhub create${NC}"
+    fi
+    
+    echo ""
+    echo -e "${YELLOW}Commands:${NC}"
+    echo "  automationhub list       - List automations"
+    echo "  automationhub dashboard - Start dashboard"
+    echo "  automationhub status   - Show this status"
+    echo ""
+}
+
+# Main
+case "$1" in
+    install|setup)
+        cmd_install
+        ;;
+    test|tests)
+        cmd_test
+        ;;
+    list|ls)
+        cmd_list
+        ;;
+    enable)
+        cmd_enable "$@"
+        ;;
+    disable)
+        cmd_disable "$@"
+        ;;
+    create)
+        cmd_create "$@"
+        ;;
+    dashboard|start)
+        cmd_dashboard
+        ;;
+    status)
+        cmd_status
+        ;;
+    help|--help|-h|"")
+        show_help
+        ;;
+    *)
+        # Try as single command
+        if [ -n "$1" ]; then
+            cmd_test_single "$@"
+        else
+            show_help
+        fi
+        ;;
+esac
