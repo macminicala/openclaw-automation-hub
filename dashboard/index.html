@@ -198,9 +198,29 @@
           <!-- Schedule -->
           <div class="trigger-config" data-trigger="schedule">
             <div class="form-group">
+              <label for="schedule-preset">Schedule</label>
+              <select id="schedule-preset" onchange="updateSchedulePreset()">
+                <option value="custom">Custom cron expression</option>
+                <option value="every-hour">Every hour</option>
+                <option value="every-day-9am" selected>Every day at 9:00 AM</option>
+                <option value="every-day-6pm">Every day at 6:00 PM</option>
+                <option value="every-monday">Every Monday at 8:00 AM</option>
+                <option value="every-tuesday">Every Tuesday at 8:00 AM</option>
+                <option value="every-wednesday">Every Wednesday at 8:00 AM</option>
+                <option value="every-thursday">Every Thursday at 8:00 AM</option>
+                <option value="every-friday">Every Friday at 8:00 AM</option>
+                <option value="every-weekday">Every weekday at 9:00 AM</option>
+                <option value="every-month">First day of every month at 9:00 AM</option>
+                <option value="every-minute">Every minute (testing)</option>
+              </select>
+            </div>
+            <div class="form-group" id="cron-group">
               <label for="cron">Cron Expression</label>
               <input type="text" id="cron" placeholder="0 9 * * 1-5" value="0 9 * * *">
               <small>Format: minute hour day month weekday</small>
+            </div>
+            <div class="form-group" id="schedule-preview">
+              <small id="cron-preview">Runs: Every day at 9:00 AM</small>
             </div>
           </div>
           

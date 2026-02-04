@@ -265,12 +265,63 @@ function setupEventListeners() {
 
 // ============ FORM HANDLERS ============
 
+// Schedule preset to cron mapping
+const SCHEDULE_PRESETS = {
+  'every-hour': '0 * * * *',
+  'every-day-9am': '0 9 * * *',
+  'every-day-6pm': '0 18 * * *',
+  'every-monday': '0 8 * * 1',
+  'every-tuesday': '0 8 * * 2',
+  'every-wednesday': '0 8 * * 3',
+  'every-thursday': '0 8 * * 4',
+  'every-friday': '0 8 * * 5',
+  'every-weekday': '0 9 * * 1-5',
+  'every-month': '0 9 1 * *',
+  'every-minute': '* * * * *'
+};
+
+const SCHEDULE_PREVIEWS = {
+  'every-hour': 'Runs at the start of every hour',
+  'every-day-9am': 'Runs every day at 9:00 AM',
+  'every-day-6pm': 'Runs every day at 6:00 PM',
+  'every-monday': 'Runs every Monday at 8:00 AM',
+  'every-tuesday': 'Runs every Tuesday at 8:00 AM',
+  'every-wednesday': 'Runs every Wednesday at 8:00 AM',
+  'every-thursday': 'Runs every Thursday at 8:00 AM',
+  'every-friday': 'Runs every Friday at 8:00 AM',
+  'every-weekday': 'Runs Monday-Friday at 9:00 AM',
+  'every-month': 'Runs on the 1st of every month at 9:00 AM',
+  'every-minute': 'Runs every minute (for testing)'
+};
+
 function updateTriggerFields() {
   const type = document.getElementById('trigger-type').value;
   document.querySelectorAll('.trigger-config').forEach(el => {
     el.style.display = 'none';
   });
   document.querySelector(`.trigger-config[data-trigger="${type}"]`).style.display = 'block';
+  
+  // Show/hide cron field based on preset
+  if (type === 'schedule') {
+    updateSchedulePreset();
+  }
+}
+
+function updateSchedulePreset() {
+  const preset = document.getElementById('schedule-preset').value;
+  const cronInput = document.getElementById('cron');
+  const cronGroup = document.getElementById('cron-group');
+  const preview = document.getElementById('cron-preview');
+  
+  if (preset === 'custom') {
+    cronGroup.style.display = 'block';
+    preview.textContent = 'Enter a cron expression';
+    preview.style.color = 'var(--text-muted)';
+  } else {
+    cronInput.value = SCHEDULE_PRESETS[preset];
+    preview.textContent = SCHEDULE_PREVIEWS[preset] || '';
+    preview.style.color = 'var(--success)';
+  }
 }
 
 function addAction() {
@@ -374,7 +425,17 @@ function editAutomation(id) {
   // Populate trigger fields
   const t = a.trigger;
   if (t) {
-    if (t.cron) document.getElementById('cron').value = t.cron;
+    if (t.cron) {
+      document.getElementById('cron').value = t.cron;
+      // Find matching preset
+      const preset = Object.entries(SCHEDULE_PRESETS).find(([k, v]) => v === t.cron);
+      if (preset) {
+        document.getElementById('schedule-preset').value = preset[0];
+      } else {
+        document.getElementById('schedule-preset').value = 'custom';
+      }
+      updateSchedulePreset();
+    }
     if (t.port) document.getElementById('webhook-port').value = t.port;
     if (t.endpoint) document.getElementById('webhook-endpoint').value = t.endpoint;
     if (t.path) document.getElementById('watch-path').value = t.path;
@@ -421,6 +482,7 @@ function openModal() {
   document.getElementById('automation-form').reset();
   document.getElementById('edit-id').value = '';
   document.getElementById('trigger-type').value = 'schedule';
+  document.getElementById('schedule-preset').value = 'every-day-9am';
   updateTriggerFields();
   document.getElementById('actions-list').innerHTML = '';
   addAction();
