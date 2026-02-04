@@ -75,6 +75,11 @@ SKILL_DIR="$HOME/.clawd/skills/automation-hub"
 CMDCAT
     chmod +x "$BIN_DIR/automationhub"
     
+    # Add to PATH in .zshrc if not already there
+    if ! grep -q 'automationhub' ~/.zshrc 2>/dev/null; then
+        echo 'export PATH="$HOME/.clawd/bin:$PATH"' >> ~/.zshrc
+    fi
+    
     success "Automation Hub installed!"
 }
 
