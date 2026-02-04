@@ -1,38 +1,52 @@
 #!/bin/bash
-# Automation Hub - Quick Install
-# Usage: bash install.sh
+# Automation Hub - One-line Install
+# Usage: curl -fsSL https://raw.githubusercontent.com/macminicala/openclaw-automation-hub/main/install.sh | bash
 
 set -e
 
-echo "⚡ Automation Hub - Installing..."
-echo ""
-
-# Install directory
+# Configuration
 SKILL_DIR="$HOME/.clawd/skills/automation-hub"
+BIN_DIR="$HOME/.clawd/bin"
+GITHUB_RAW="https://raw.githubusercontent.com/macminicala/openclaw-automation-hub/main"
 
-# Clone if not exists
-if [ ! -d "$SKILL_DIR" ]; then
-    echo "📦 Cloning Automation Hub..."
-    mkdir -p "$HOME/.clawd/skills"
-    git clone https://github.com/macminicala/openclaw-automation-hub.git "$SKILL_DIR"
-fi
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
+NC='\033[0m'
 
-# Install deps
-echo "📦 Installing dependencies..."
-cd "$SKILL_DIR"
-npm install 2>/dev/null || npm install
+# Functions
+log() { echo -e "${CYAN}[🤖]${NC} $1"; }
+success() { echo -e "${GREEN}✅ $1${NC}"; }
+warn() { echo -e "${YELLOW}⚠️  $1${NC}"; }
 
-# Run tests
-echo "🧪 Running tests..."
-npm test
-
-# Create demo automations
-echo ""
-echo "📁 Creating demo automations..."
-mkdir -p "$HOME/.openclaw/automations"
-
-# Morning briefing
-cat > "$HOME/.openclaw/automations/morning-briefing.json" << 'EOF'
+# Install
+install() {
+    # Clone or update
+    if [ ! -d "$SKILL_DIR" ]; then
+        log "Installing Automation Hub..."
+        mkdir -p "$HOME/.clawd/skills"
+        git clone https://github.com/macminicala/openclaw-automation-hub.git "$SKILL_DIR" 2>/dev/null || \
+            curl -sL "$GITHUB_RAW/install-skill.sh" -o "$SKILL_DIR/install.sh" || \
+            { error "Installation failed"; exit 1; }
+    else
+        log "Updating Automation Hub..."
+        cd "$SKILL_DIR"
+        git pull origin main 2>/dev/null || warn "Could not update"
+    fi
+    
+    # Install dependencies
+    log "Installing dependencies..."
+    cd "$SKILL_DIR"
+    npm install 2>/dev/null || npm install
+    
+    # Create demo automations
+    mkdir -p "$HOME/.openclaw/automations"
+    
+    cat > "$HOME/.openclaw/automations/morning-briefing.json" << 'EOF'
 {
   "id": "morning-briefing",
   "name": "Morning Briefing",
@@ -41,9 +55,8 @@ cat > "$HOME/.openclaw/automations/morning-briefing.json" << 'EOF'
   "actions": [{ "type": "shell", "command": "echo '☀️ Good morning!'" }]
 }
 EOF
-
-# Webhook test
-cat > "$HOME/.openclaw/automations/webhook-test.json" << 'EOF'
+    
+    cat > "$HOME/.openclaw/automations/webhook-test.json" << 'EOF'
 {
   "id": "webhook-test",
   "name": "Webhook Test",
@@ -52,38 +65,69 @@ cat > "$HOME/.openclaw/automations/webhook-test.json" << 'EOF'
   "actions": [{ "type": "shell", "command": "echo '🔗 Webhook triggered'" }]
 }
 EOF
-
-echo "✅ Created demo automations"
-
-# Create automationhub command
-echo ""
-echo "📝 Creating automationhub command..."
-
-# Check if ~/clawd/bin exists
-if [ -d "$HOME/.clawd/bin" ]; then
-    cp "$SKILL_DIR/automationhub" "$HOME/.clawd/bin/automationhub"
-    chmod +x "$HOME/.clawd/bin/automationhub"
     
-    echo "✅ Command created: ~/clawd/bin/automationhub"
-    echo ""
-    echo "🚀 To use automationhub, ensure ~/clawd/bin is in your PATH"
-    echo ""
-    echo "Add to PATH:"
-    echo '  export PATH="$HOME/.clawd/bin:$PATH"'
-else
-    # Just make the script executable
-    chmod +x "$SKILL_DIR/automationhub"
-    echo "✅ Command ready: $SKILL_DIR/automationhub"
-fi
+    # Create command
+    mkdir -p "$BIN_DIR"
+    cat > "$BIN_DIR/automationhub" << 'CMDCAT'
+#!/bin/bash
+# Automation Hub CLI
+SKILL_DIR="$HOME/.clawd/skills/automation-hub"
+[ -d "$SKILL_DIR" ] && cd "$SKILL_DIR" && node cli/main.js "$@"
+CMDCAT
+    chmod +x "$BIN_DIR/automationhub"
+    
+    success "Automation Hub installed!"
+}
 
-echo ""
-echo "✅ Installation complete!"
-echo ""
-echo "📋 Usage:"
-echo "  automationhub status      # Show status"
-echo "  automationhub list       # List automations"
-echo "  automationhub dashboard  # Start dashboard"
-echo "  automationhub help      # Show help"
-echo ""
-echo "🌐 Dashboard: http://localhost:18795"
-echo ""
+# Run tests
+test() {
+    cd "$SKILL_DIR"
+    npm test
+}
+
+# Show status
+status() {
+    echo ""
+    echo -e "${MAGENTA}⚡ Automation Hub Status${NC}"
+    echo ""
+    echo -e "📁 $SKILL_DIR"
+    echo -e "📋 ~/.openclaw/automations/"
+    
+    TOTAL=$(ls -1 ~/.openclaw/automations/*.json 2>/dev/null | wc -l || echo 0)
+    echo -e "📊 Total automations: $TOTAL"
+    
+    ENABLED=$(grep -l '"enabled": true' ~/.openclaw/automations/*.json 2>/dev/null | wc -l || echo 0)
+    echo -e "🟢 Enabled: $ENABLED"
+    
+    echo ""
+}
+
+# Main
+case "$1" in
+    test|--test|-t)
+        test
+        ;;
+    status|--status|-s)
+        status
+        ;;
+    install|--install|-i|"")
+        install
+        echo ""
+        echo -e "${GREEN}🚀 Quick start:${NC}"
+        echo "   automationhub status"
+        echo "   automationhub dashboard"
+        echo ""
+        ;;
+    help|--help|-h|"")
+        echo ""
+        echo -e "${MAGENTA}⚡ Automation Hub${NC}"
+        echo ""
+        echo "Usage: curl -fsSL https://raw.githubusercontent.com/macminicala/openclaw-automation-hub/main/install.sh | bash"
+        echo ""
+        echo "Commands:"
+        echo "   (none)     Install"
+        echo "   test        Run tests"
+        echo "   status      Show status"
+        echo ""
+        ;;
+esac
