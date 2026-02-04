@@ -1,0 +1,28 @@
+{
+  "id": "auto-git-commit",
+  "name": "Auto Git Commit",
+  "enabled": false,
+  "description": "Automatically commit changes at 6PM on weekdays",
+  "trigger": {
+    "type": "schedule",
+    "cron": "0 18 * * 1-5"
+  },
+  "conditions": [
+    {
+      "type": "time_range",
+      "start": "17:00",
+      "end": "20:00"
+    }
+  ],
+  "actions": [
+    {
+      "type": "shell",
+      "command": "cd ~/clawd && git add -A && git commit -m 'Auto backup: $(date +%Y-%m-%d %H:%M)' && git push origin main"
+    },
+    {
+      "type": "notify",
+      "channel": "telegram",
+      "message": "✅ Git auto-commit completed"
+    }
+  ]
+}

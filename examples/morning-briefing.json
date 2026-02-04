@@ -1,0 +1,28 @@
+{
+  "id": "morning-briefing",
+  "name": "Morning Briefing",
+  "enabled": true,
+  "trigger": {
+    "type": "schedule",
+    "cron": "0 8 * * 1-5"
+  },
+  "conditions": [
+    {
+      "type": "time_range",
+      "start": "07:00",
+      "end": "10:00"
+    }
+  ],
+  "actions": [
+    {
+      "type": "agent",
+      "model": "claude-opus-4-5",
+      "prompt": "Check my calendar for today, summarize meetings and prepare talking points"
+    },
+    {
+      "type": "notify",
+      "channel": "telegram",
+      "message": "☀️ Good morning! Your briefing is ready."
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "id": "system-monitor",
+  "name": "System Health Monitor",
+  "enabled": false,
+  "description": "Alert when CPU or memory usage is high",
+  "trigger": {
+    "type": "schedule",
+    "cron": "*/5 * * * *"
+  },
+  "conditions": [
+    {
+      "type": "shell",
+      "command": "top -l 1 | grep 'CPU usage' | awk '{print $3}' | sed 's/%//'"
+    }
+  ],
+  "actions": [
+    {
+      "type": "shell",
+      "command": "echo 'System check passed' > /dev/null"
+    }
+  ],
+  "cpu_threshold": 80,
+  "memory_threshold": 90
+}

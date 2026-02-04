@@ -1,0 +1,21 @@
+{
+  "id": "dashboard-demo",
+  "name": "Dashboard Demo Automation",
+  "enabled": true,
+  "description": "Demo automation created via dashboard",
+  "trigger": {
+    "type": "schedule",
+    "cron": "0 * * * *"
+  },
+  "actions": [
+    {
+      "type": "shell",
+      "command": "echo 'Dashboard automation triggered at $(date)'"
+    },
+    {
+      "type": "notify",
+      "channel": "telegram",
+      "message": "✅ Dashboard automation executed!"
+    }
+  ]
+}

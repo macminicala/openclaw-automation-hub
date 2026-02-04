@@ -1,0 +1,19 @@
+{
+  "name": "openclaw-automation-hub",
+  "version": "0.1.0",
+  "description": "AI-native automation engine for OpenClaw",
+  "main": "src/engine.js",
+  "bin": {
+    "automation-hub": "cli/main.js",
+    "automation-dashboard": "dashboard/server.js"
+  },
+  "scripts": {
+    "start": "node src/engine.js",
+    "cli": "node cli/main.js",
+    "dashboard": "node dashboard/server.js",
+    "test": "node test/run.js",
+    "install": "chmod +x setup.sh && ./setup.sh"
+  },
+  "keywords": ["openclaw", "automation"],
+  "license": "MIT"
+}

@@ -1,0 +1,26 @@
+{
+  "id": "daily-ai-news",
+  "name": "Daily AI News Briefing",
+  "enabled": false,
+  "description": "Fetch latest AI news at 9AM and summarize",
+  "trigger": {
+    "type": "schedule",
+    "cron": "0 9 * * *"
+  },
+  "actions": [
+    {
+      "type": "agent",
+      "model": "claude-opus-4-5",
+      "prompt": "Read latest tweets from @karpathy, @demishassabis, @AnthropicAI and summarize top 3 AI news items. Write in Italian, be concise."
+    },
+    {
+      "type": "shell",
+      "command": "mkdir -p ~/clawd/memory && echo 'AI News - $(date +%Y-%m-%d)' >> ~/clawd/memory/daily-ai-news.md"
+    },
+    {
+      "type": "notify",
+      "channel": "telegram",
+      "message": "📰 Daily AI News ready!"
+    }
+  ]
+}
