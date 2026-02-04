@@ -4,6 +4,7 @@
 
 const API_URL = '/api';
 let automations = {};
+let pendingDeleteId = null;
 
 // Schedule presets with human-readable descriptions
 const SCHEDULE_PRESETS = {
@@ -25,55 +26,111 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============ API FUNCTIONS ============
 
 async function loadAutomations() {
+  document.getElementById('loading-indicator').style.display = 'flex';
+  document.getElementById('automations-grid').style.display = 'none';
+  document.getElementById('empty-state').style.display = 'none';
+  
   try {
     const response = await fetch(`${API_URL}/automations`);
     const data = await response.json();
     automations = data.automations || {};
     updateStats(data.stats);
     renderAutomations();
+    document.getElementById('loading-indicator').style.display = 'none';
+    if (Object.keys(automations).length > 0) {
+      document.getElementById('automations-grid').style.display = 'grid';
+    } else {
+      document.getElementById('empty-state').style.display = 'block';
+    }
   } catch (error) {
     console.error('Failed to load automations:', error);
-    logActivity(`Failed to load automations: Check your connection.`, 'error');
+    document.getElementById('loading-indicator').style.display = 'none';
+    logActivity('Could not load your automations. Please refresh the page.', 'error');
+    showToast('Could not load automations. Please try refreshing the page.', 'error');
+    document.getElementById('empty-state').style.display = 'block';
   }
 }
 
 async function toggleAutomation(id, enabled) {
+  const automationName = automations[id]?.name || id;
+  const btn = event?.target;
+  if (btn) btn.classList.add('btn-loading');
+  
   const endpoint = enabled ? 'enable' : 'disable';
   try {
     await fetch(`${API_URL}/automations/${id}/${endpoint}`, { method: 'POST' });
     await loadAutomations();
-    logActivity(`Enabled: ${automations[id]?.name || id}`, 'success');
+    logActivity(`${enabled ? 'Disabled' : 'Enabled'} "${automationName}"`, 'success');
     showToast(`${enabled ? 'Disabled' : 'Enabled'} successfully`, 'success');
   } catch (error) {
-    showToast('Something went wrong. Please try again.', 'error');
+    showToast('Could not complete the action. Please try again.', 'error');
+  } finally {
+    if (btn) btn.classList.remove('btn-loading');
   }
 }
 
 async function runAutomation(id) {
+  const automationName = automations[id]?.name || id;
+  const btn = event?.target;
+  if (btn) {
+    btn.classList.add('btn-loading');
+    btn.textContent = 'Running...';
+  }
+  
   try {
     await fetch(`${API_URL}/automations/${id}/run`, { method: 'POST' });
-    logActivity(`Ran: ${automations[id]?.name || id}`, 'info');
-    showToast('Automation executed!', 'success');
+    logActivity(`Started running "${automationName}"`, 'info');
+    showToast('Automation is now running!', 'success');
   } catch (error) {
-    showToast("Couldn't run the automation. Check your connection.", 'error');
+    showToast('Could not run the automation. Please try again.', 'error');
+  } finally {
+    if (btn) {
+      btn.classList.remove('btn-loading');
+      btn.textContent = '▶ Run Now';
+    }
   }
 }
 
-async function deleteAutomation(id) {
+function confirmDelete(id) {
   const automationName = automations[id]?.name || id;
-  if (!confirm(`Are you sure you want to delete "${automationName}"? This cannot be undone.`)) return;
+  pendingDeleteId = id;
+  document.getElementById('delete-message').textContent = `Are you sure you want to delete "${automationName}"? This action cannot be undone.`;
+  document.getElementById('delete-modal-overlay').classList.add('active');
+  document.getElementById('delete-modal').classList.add('active');
+}
+
+function closeDeleteModal() {
+  document.getElementById('delete-modal-overlay').classList.remove('active');
+  document.getElementById('delete-modal').classList.remove('active');
+  pendingDeleteId = null;
+}
+
+async function executeDelete() {
+  if (!pendingDeleteId) return;
+  
+  const btn = document.getElementById('confirm-delete-btn');
+  btn.classList.add('btn-loading');
+  btn.textContent = 'Deleting...';
   
   try {
-    await fetch(`${API_URL}/automations/${id}`, { method: 'DELETE' });
+    await fetch(`${API_URL}/automations/${pendingDeleteId}`, { method: 'DELETE' });
     await loadAutomations();
-    logActivity(`Deleted: ${automationName}`, 'warning');
-    showToast('Automation deleted', 'success');
+    logActivity(`Deleted "${automations[pendingDeleteId]?.name || pendingDeleteId}"`, 'warning');
+    showToast('Automation deleted successfully', 'success');
   } catch (error) {
-    showToast("Couldn't delete. Please try again.", 'error');
+    showToast('Could not delete the automation. Please try again.', 'error');
+  } finally {
+    btn.classList.remove('btn-loading');
+    btn.textContent = 'Delete';
+    closeDeleteModal();
   }
 }
 
 async function saveAutomation(automation) {
+  const btn = document.querySelector('#automation-form button[type="submit"]');
+  btn.classList.add('btn-loading');
+  btn.textContent = 'Saving...';
+  
   try {
     await fetch(`${API_URL}/automations`, {
       method: 'POST',
@@ -81,10 +138,13 @@ async function saveAutomation(automation) {
       body: JSON.stringify(automation)
     });
     await loadAutomations();
-    logActivity(`Created: ${automation.name}`, 'success');
-    showToast('Automation saved!', 'success');
+    logActivity(`Created new automation "${automation.name}"`, 'success');
+    showToast('Automation saved successfully!', 'success');
   } catch (error) {
-    showToast('Save failed: Something went wrong. Please try again.', 'error');
+    showToast('Could not save the automation. Please check your inputs and try again.', 'error');
+  } finally {
+    btn.classList.remove('btn-loading');
+    btn.textContent = '✓ Save Automation';
   }
 }
 
@@ -95,35 +155,49 @@ function updateStats(stats) {
   document.getElementById('stat-enabled').textContent = stats.enabled || 0;
 }
 
-function renderAutomations() {
+function renderAutomations(filterText = '') {
   const grid = document.getElementById('automations-grid');
   const emptyState = document.getElementById('empty-state');
-  const searchInput = document.getElementById('search-input');
-  const searchTerm = (searchInput?.value || '').toLowerCase();
+  const filter = filterText.toLowerCase();
   
-  const list = Object.values(automations).filter(a => 
-    !searchTerm || (a.name || '').toLowerCase().includes(searchTerm)
-  );
+  let list = Object.values(automations);
+  
+  if (filter) {
+    list = list.filter(a => (a.name || '').toLowerCase().includes(filter));
+  }
   
   if (list.length === 0) {
     grid.style.display = 'none';
     emptyState.style.display = 'block';
+    if (filter) {
+      emptyState.querySelector('h3').textContent = 'No matching automations';
+      emptyState.querySelector('p').textContent = 'Try a different search term';
+    } else {
+      emptyState.querySelector('h3').textContent = 'No automations yet';
+      emptyState.querySelector('p').textContent = 'Create your first automation to get started';
+    }
     return;
   }
   
   grid.style.display = 'grid';
   emptyState.style.display = 'none';
   
+  const editId = document.getElementById('edit-id').value;
+  
   grid.innerHTML = list.map(automation => {
     const actionType = automation.actions?.[0]?.type || 'unknown';
     const actionDesc = getActionDescription(automation);
+    const lastRun = automation.lastRun ? formatRelativeTime(automation.lastRun) : 'Never run';
+    const isEditing = automation.id === editId;
     
     return `
-    <div class="automation-card">
+    <div class="automation-card ${isEditing ? 'editing' : ''}">
+      ${isEditing ? '<div class="editing-indicator">Editing</div>' : ''}
       <div class="card-header">
         <div>
           <div class="card-title">${escapeHtml(automation.name)}</div>
           <div class="card-schedule">⏰ ${getScheduleDescription(automation.trigger?.cron)}</div>
+          <div class="card-last-run">Last run: ${lastRun}</div>
         </div>
         <div class="card-status ${automation.enabled ? 'enabled' : 'disabled'}">
           <span class="status-dot"></span>
@@ -140,12 +214,12 @@ function renderAutomations() {
           ${automation.enabled ? '⏸ Disable' : '▶ Enable'}
         </button>
         <button class="btn btn-secondary btn-small" onclick="runAutomation('${escapeHtml(automation.id)}')">
-          ⚡ Run Now
+          ▶ Run Now
         </button>
         <button class="btn btn-secondary btn-small" onclick="editAutomation('${escapeHtml(automation.id)}')">
           ✏️ Edit
         </button>
-        <button class="btn btn-danger btn-small" onclick="deleteAutomation('${escapeHtml(automation.id)}')">
+        <button class="btn btn-danger btn-small" onclick="confirmDelete('${escapeHtml(automation.id)}')">
           🗑️
         </button>
       </div>
@@ -160,17 +234,25 @@ function getActionDescription(automation) {
   switch (action.type) {
     case 'shell': 
       const cmd = action.command || action.exec || 'command';
-      const shortCmd = cmd.length > 20 ? cmd.substring(0, 17) + '...' : cmd;
-      return `Command: ${shortCmd}`;
-    case 'notify': return 'Notification set';
-    case 'email': return 'Email to: [hidden]';
-    case 'agent': return 'AI Agent task';
-    default: return action.type;
+      return `Runs: ${truncate(cmd, 30)}`;
+    case 'notify': 
+      const msg = action.message || 'message';
+      return `Sends notification: ${truncate(msg, 30)}`;
+    case 'email': 
+      const to = action.to || action.recipient || 'recipient';
+      return `Sends email to: ${truncate(to, 30)}`;
+    case 'agent': return 'Runs AI Agent task';
+    default: return 'Custom action: ' + action.type;
   }
 }
 
+function truncate(text, length) {
+  if (!text) return '';
+  return text.length > length ? text.substring(0, length) + '...' : text;
+}
+
 function getScheduleDescription(cron) {
-  if (!cron) return 'No schedule';
+  if (!cron) return 'No schedule set';
   
   // Match common presets
   for (const [key, val] of Object.entries(SCHEDULE_PRESETS)) {
@@ -191,31 +273,53 @@ function getActionIcon(type) {
   return icons[type] || '⚡';
 }
 
+function formatRelativeTime(dateString) {
+  if (!dateString) return 'Never';
+  
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  
+  return date.toLocaleDateString();
+}
+
+// ============ SEARCH ============
+
+function filterAutomations() {
+  const filterText = document.getElementById('search-input').value;
+  renderAutomations(filterText);
+}
+
 // ============ EVENT LISTENERS ============
 
 function setupEventListeners() {
   document.getElementById('automation-form').addEventListener('submit', handleFormSubmit);
-  const searchInput = document.getElementById('search-input');
-  if (searchInput) {
-    searchInput.addEventListener('input', () => renderAutomations());
-  }
+  document.getElementById('confirm-delete-btn').addEventListener('click', executeDelete);
 }
 
 // ============ FORM HANDLERS ============
 
 function updateSchedulePreset() {
   const preset = document.getElementById('schedule-preset').value;
-  const cronGroup = document.getElementById('cron-group');
+  const scheduleGroup = document.getElementById('schedule-group');
   const helpText = document.getElementById('schedule-help');
-  const cronInput = document.getElementById('cron');
+  const scheduleInput = document.getElementById('schedule');
   
   if (preset === 'custom') {
-    cronGroup.style.display = 'block';
+    scheduleGroup.style.display = 'block';
     helpText.textContent = 'Enter your custom schedule';
-    cronInput.placeholder = '0 9 * * *';
+    scheduleInput.placeholder = '0 9 * * *';
   } else {
-    cronGroup.style.display = 'none';
-    cronInput.value = SCHEDULE_PRESETS[preset].cron;
+    scheduleGroup.style.display = 'none';
+    scheduleInput.value = SCHEDULE_PRESETS[preset].cron;
     helpText.textContent = SCHEDULE_PRESETS[preset].desc;
   }
 }
@@ -239,7 +343,7 @@ function handleFormSubmit(e) {
   const name = document.getElementById('name').value.trim();
   const preset = document.getElementById('schedule-preset').value;
   const cron = preset === 'custom' 
-    ? document.getElementById('cron').value 
+    ? document.getElementById('schedule').value 
     : SCHEDULE_PRESETS[preset].cron;
   const actionType = document.querySelector('input[name="action-type"]:checked').value;
   
@@ -281,7 +385,7 @@ function handleFormSubmit(e) {
       const body = document.getElementById('email-body').value.trim();
       
       if (!to || !subject || !body) {
-        showToast('Please fill in all email fields (to, subject, message)', 'error');
+        showToast('Fill in all email fields (recipient, subject, and message)', 'error');
         return;
       }
       automation.actions.push({ 
@@ -309,8 +413,7 @@ function editAutomation(id) {
   
   const action = a.actions?.[0];
   
-  document.getElementById('modal-title').textContent = 'Edit Automation (Editing)';
-  document.getElementById('modal').classList.add('editing-mode');
+  document.getElementById('modal-title').textContent = `Edit: ${a.name}`;
   document.getElementById('edit-id').value = id;
   document.getElementById('name').value = a.name || id;
   
@@ -323,7 +426,7 @@ function editAutomation(id) {
     }
   }
   document.getElementById('schedule-preset').value = preset;
-  document.getElementById('cron').value = a.trigger?.cron || '';
+  document.getElementById('schedule').value = a.trigger?.cron || '';
   updateSchedulePreset();
   
   // Set action type and fields
@@ -352,7 +455,7 @@ function editAutomation(id) {
 // ============ MODAL ============
 
 function openNewAutomation() {
-  document.getElementById('modal-title').textContent = 'Create Automation';
+  document.getElementById('modal-title').textContent = 'Create New Automation';
   document.getElementById('automation-form').reset();
   document.getElementById('edit-id').value = '';
   
@@ -371,7 +474,8 @@ function openNewAutomation() {
 function closeModal() {
   document.getElementById('modal-overlay').classList.remove('active');
   document.getElementById('modal').classList.remove('active');
-  document.getElementById('modal').classList.remove('editing-mode');
+  document.getElementById('edit-id').value = '';
+  renderAutomations();
 }
 
 // ============ UTILITY ============
@@ -385,7 +489,7 @@ function escapeHtml(text) {
 
 function logActivity(message, type = 'info') {
   const feed = document.getElementById('activity-feed');
-  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const time = formatRelativeTime(new Date());
   const item = document.createElement('div');
   item.className = `log-item log-${type}`;
   item.innerHTML = `<span>${escapeHtml(message)}</span><span>${time}</span>`;
@@ -400,11 +504,16 @@ function showToast(message, type = 'success') {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  toast.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span><span>${escapeHtml(message)}</span>`;
+  toast.innerHTML = `<span>${type === 'success' ? '✅' : '⚠️'}</span><span>${escapeHtml(message)}</span>`;
   container.appendChild(toast);
+  
+  // Success animation
+  if (type === 'success') {
+    toast.style.animation = 'successPop 0.4s ease';
+  }
   
   setTimeout(() => {
     toast.style.animation = 'slideIn 0.3s ease reverse';
     setTimeout(() => toast.remove(), 300);
-  }, 3000);
+  }, 4000);
 }
