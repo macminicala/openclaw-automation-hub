@@ -4,18 +4,8 @@ const path = require('path');
 const url = require('url');
 const { WebSocketServer } = require('ws');
 
-// Use process.argv to get the actual script location (works with symlinks)
-const SCRIPT_DIR = path.dirname(path.resolve(process.argv[1]));
-
-const PORT = process.env.DASHBOARD_PORT || 18799;
 const SCRIPT_DIR = __dirname;
-
-// Storage
-const STORAGE_PATH = path.join(require('os').homedir(), '.openclaw/automations');
-const LOGS_PATH = path.join(require('os').homedir(), '.openclaw/logs/automation');
-[STORAGE_PATH, LOGS_PATH].forEach(dir => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-});
+const PORT = process.env.DASHBOARD_PORT || 18799;
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -25,6 +15,12 @@ const MIME_TYPES = {
   '.png': 'image/png',
   '.svg': 'image/svg+xml'
 };
+
+const STORAGE_PATH = path.join(require('os').homedir(), '.openclaw/automations');
+const LOGS_PATH = path.join(require('os').homedir(), '.openclaw/logs/automation');
+[STORAGE_PATH, LOGS_PATH].forEach(dir => {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+});
 
 function loadAutomations() {
   const automations = {};
@@ -66,7 +62,6 @@ const server = http.createServer((req, res) => {
   
   const pathname = url.parse(req.url).pathname;
   
-  // API Routes
   if (pathname.startsWith('/api/')) {
     const apiPath = pathname.replace('/api/', '');
     
@@ -88,7 +83,6 @@ const server = http.createServer((req, res) => {
     return;
   }
   
-  // Static files
   let filePath = pathname === '/' ? '/index.html' : pathname;
   const fullPath = path.join(SCRIPT_DIR, filePath);
   
