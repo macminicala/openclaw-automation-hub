@@ -25,6 +25,22 @@ function expandPath(p) {
 }
 
 const commands = {
+  async dashboard() {
+    const { spawn } = require('child_process');
+    console.log('\n🌐 Starting Automation Hub Dashboard...\n');
+    console.log('   Dashboard: http://localhost:18799');
+    console.log('   Press Ctrl+C to stop\n');
+    
+    const dashboard = spawn('node', ['dashboard/server.js'], {
+      cwd: path.dirname(__dirname),
+      stdio: 'inherit'
+    });
+    
+    dashboard.on('error', (err) => {
+      console.log(`❌ Error starting dashboard: ${err.message}`);
+    });
+  },
+
   async list() {
     const engine = getEngine();
     const automations = Array.from(engine.automations.values());
@@ -178,17 +194,18 @@ if (cmd === 'create') {
   }
 } else if (cmd && !commands[cmd]) {
   console.log(`Unknown command: ${cmd}`);
-  console.log('\nUsage: automation-hub <command> [options]');
+  console.log('\nUsage: automationhub <command> [options]');
   console.log('\nCommands:');
-  console.log('  list                  List all automations');
-  console.log('  create --name X       Create new automation');
-  console.log('  enable <id>           Enable automation');
-  console.log('  disable <id>           Disable automation');
-  console.log('  delete <id>           Delete automation');
-  console.log('  test <id>             Test automation');
-  console.log('  logs <id>             View logs');
-  console.log('  webhook <id>          Test webhook trigger');
-  console.log('  status <id>           View automation status');
+  console.log('  dashboard           Start dashboard');
+  console.log('  list                List all automations');
+  console.log('  create --name X     Create new automation');
+  console.log('  enable <id>         Enable automation');
+  console.log('  disable <id>        Disable automation');
+  console.log('  delete <id>         Delete automation');
+  console.log('  test <id>           Test automation');
+  console.log('  logs <id>           View logs');
+  console.log('  webhook <id>        Test webhook trigger');
+  console.log('  status <id>         View automation status');
   console.log('\nCreate Options:');
   console.log('  --name "My Auto"      Automation name');
   console.log('  --trigger schedule    Trigger type (schedule, webhook, file_change)');
