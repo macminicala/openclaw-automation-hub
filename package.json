@@ -1,7 +1,7 @@
 {
   "name": "openclaw-automation-hub",
-  "version": "0.3.0",
-  "description": "AI-native automation engine for OpenClaw. v0.3 adds Email, Calendar, and System Monitor triggers.",
+  "version": "0.4.0",
+  "description": "AI-native automation engine for OpenClaw. v0.4 adds Visual Workflow Builder and Real-time Dashboard.",
   "main": "src/engine.js",
   "bin": {
     "automation-hub": "cli/main.js",
@@ -18,16 +18,16 @@
     "openclaw",
     "automation",
     "workflows",
-    "webhook",
-    "email",
-    "calendar",
+    "visual-builder",
+    "dashboard",
     "ai",
     "local"
   ],
   "license": "MIT",
   "dependencies": {
-    "node-cron": "^3.0.3",
     "chokidar": "^3.6.0",
-    "glob": "^10.3.10"
+    "glob": "^10.3.10",
+    "node-cron": "^3.0.3",
+    "ws": "^8.19.0"
   }
 }

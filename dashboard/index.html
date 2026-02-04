@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Automation Hub ⚡</title>
+  <title>Automation Hub v0.4 ⚡</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -14,17 +14,21 @@
         <div class="logo">
           <span class="logo-icon">⚡</span>
           <h1>Automation Hub</h1>
+          <span class="version-badge">v0.4</span>
         </div>
         <div class="header-actions">
-          <button class="btn btn-primary" onclick="openModal()">
-            <span>+</span> New Automation
+          <button class="btn btn-primary" onclick="openWorkflowBuilder()">
+            <span>⚡</span> Workflow Builder
+          </button>
+          <button class="btn btn-secondary" onclick="openModal()">
+            <span>+</span> New
           </button>
         </div>
       </div>
     </header>
 
     <!-- Stats Bar -->
-    <div class="stats-bar">
+    <div class="stats-bar" id="stats-bar">
       <div class="stat">
         <span class="stat-value" id="stat-total">0</span>
         <span class="stat-label">Total</span>
@@ -37,39 +41,126 @@
         <span class="stat-value stat-disabled" id="stat-disabled">0</span>
         <span class="stat-label">Disabled</span>
       </div>
+      <div class="stat">
+        <span class="stat-value stat-schedule" id="stat-schedule">0</span>
+        <span class="stat-label">Schedule</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value stat-webhook" id="stat-webhook">0</span>
+        <span class="stat-label">Webhook</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value stat-event" id="stat-event">0</span>
+        <span class="stat-label">Events</span>
+      </div>
     </div>
 
     <!-- Main Content -->
     <main class="main">
-      <div class="section-header">
-        <h2>Your Automations</h2>
-        <div class="filter-tabs">
-          <button class="tab active" data-filter="all">All</button>
-          <button class="tab" data-filter="enabled">Enabled</button>
-          <button class="tab" data-filter="disabled">Disabled</button>
+      <div class="tabs">
+        <button class="tab active" data-tab="automations" onclick="switchTab('automations')">Automations</button>
+        <button class="tab" data-tab="logs" onclick="switchTab('logs')">Execution Logs</button>
+        <button class="tab" data-tab="builder" onclick="switchTab('builder')">Workflow Builder</button>
+      </div>
+
+      <!-- Automations Tab -->
+      <div class="tab-content active" id="tab-automations">
+        <div class="automations-grid" id="automations-grid">
+          <!-- Loaded via JS -->
+        </div>
+        <div class="empty-state" id="empty-state">
+          <div class="empty-icon">🤖</div>
+          <h3>No automations yet</h3>
+          <p>Create your first automation to get started</p>
+          <button class="btn btn-primary" onclick="openModal()">Create Automation</button>
         </div>
       </div>
 
-      <div class="automations-grid" id="automations-grid">
-        <!-- Automations loaded via JS -->
+      <!-- Logs Tab -->
+      <div class="tab-content" id="tab-logs">
+        <div class="logs-container">
+          <div class="logs-header">
+            <h3>Recent Executions</h3>
+            <button class="btn btn-small" onclick="refreshLogs()">Refresh</button>
+          </div>
+          <div class="logs-list" id="logs-list">
+            <div class="log-item log-info">Loading logs...</div>
+          </div>
+        </div>
       </div>
 
-      <div class="empty-state" id="empty-state" style="display: none;">
-        <div class="empty-icon">🤖</div>
-        <h3>No automations yet</h3>
-        <p>Create your first automation to get started</p>
-        <button class="btn btn-primary" onclick="openModal()">Create Automation</button>
+      <!-- Workflow Builder Tab -->
+      <div class="tab-content" id="tab-builder">
+        <div class="workflow-builder">
+          <div class="builder-header">
+            <h3>Visual Workflow Builder</h3>
+            <p>Drag and drop to create automations visually</p>
+          </div>
+          
+          <div class="builder-canvas" id="builder-canvas">
+            <div class="workflow-node trigger-node" data-type="trigger">
+              <div class="node-icon">⚡</div>
+              <div class="node-label">Trigger</div>
+              <div class="node-desc">Start condition</div>
+            </div>
+            
+            <div class="workflow-arrow">→</div>
+            
+            <div class="workflow-node condition-node" data-type="condition">
+              <div class="node-icon">🔍</div>
+              <div class="node-label">Condition</div>
+              <div class="node-desc">Filter (optional)</div>
+            </div>
+            
+            <div class="workflow-arrow">→</div>
+            
+            <div class="workflow-node action-node" data-type="action">
+              <div class="node-icon">🎯</div>
+              <div class="node-label">Action</div>
+              <div class="node-desc">What to do</div>
+            </div>
+          </div>
+
+          <div class="builder-palette">
+            <h4>Triggers</h4>
+            <div class="palette-items">
+              <div class="palette-item" draggable="true" data-trigger="schedule">⏰ Schedule</div>
+              <div class="palette-item" draggable="true" data-trigger="webhook">🔗 Webhook</div>
+              <div class="palette-item" draggable="true" data-trigger="file_change">📁 File Watch</div>
+              <div class="palette-item" draggable="true" data-trigger="email">📧 Email</div>
+              <div class="palette-item" draggable="true" data-trigger="calendar">📅 Calendar</div>
+              <div class="palette-item" draggable="true" data-trigger="system">🖥️ System</div>
+            </div>
+            
+            <h4>Conditions</h4>
+            <div class="palette-items">
+              <div class="palette-item" draggable="true" data-condition="keyword">🔑 Keyword</div>
+              <div class="palette-item" draggable="true" data-condition="time_range">⏰ Time Range</div>
+              <div class="palette-item" draggable="true" data-condition="sender">👤 Sender</div>
+              <div class="palette-item" draggable="true" data-condition="file_pattern">📄 File Pattern</div>
+            </div>
+            
+            <h4>Actions</h4>
+            <div class="palette-items">
+              <div class="palette-item" draggable="true" data-action="shell">💻 Shell</div>
+              <div class="palette-item" draggable="true" data-action="agent">🤖 AI Agent</div>
+              <div class="palette-item" draggable="true" data-action="git">🔀 Git</div>
+              <div class="palette-item" draggable="true" data-action="notify">📱 Notify</div>
+              <div class="palette-item" draggable="true" data-action="email_reply">📧 Reply</div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
 
     <!-- Logs Section -->
     <section class="logs-section">
       <div class="section-header">
-        <h2>Recent Activity</h2>
-        <button class="btn btn-small" onclick="refreshLogs()">Refresh</button>
+        <h2>Activity Feed</h2>
+        <span class="live-indicator" id="live-indicator">● Live</span>
       </div>
-      <div class="logs-list" id="logs-list">
-        <div class="log-item log-info">Dashboard loaded - Ready</div>
+      <div class="logs-list" id="activity-feed">
+        <div class="log-item log-info">Dashboard connected - Waiting for updates...</div>
       </div>
     </section>
   </div>
@@ -87,33 +178,125 @@
         
         <div class="form-group">
           <label for="name">Name</label>
-          <input type="text" id="name" placeholder="Morning Briefing" required>
+          <input type="text" id="name" placeholder="My Automation" required>
         </div>
         
         <div class="form-group">
-          <label for="cron">Schedule (Cron)</label>
-          <input type="text" id="cron" placeholder="0 9 * * 1-5" value="0 9 * * *">
-          <small>Format: minute hour day month weekday</small>
-        </div>
-        
-        <div class="form-group">
-          <label for="command">Shell Command</label>
-          <input type="text" id="command" placeholder="echo 'Hello'">
-        </div>
-        
-        <div class="form-group">
-          <label for="notify-channel">Notify Channel</label>
-          <select id="notify-channel">
-            <option value="">None</option>
-            <option value="telegram">Telegram</option>
-            <option value="whatsapp">WhatsApp</option>
-            <option value="discord">Discord</option>
+          <label for="trigger-type">Trigger Type</label>
+          <select id="trigger-type" onchange="updateTriggerFields()">
+            <option value="schedule">⏰ Schedule (Cron)</option>
+            <option value="webhook">🔗 Webhook (HTTP)</option>
+            <option value="file_change">📁 File Watch</option>
+            <option value="email">📧 Email (IMAP)</option>
+            <option value="calendar">📅 Calendar</option>
+            <option value="system">🖥️ System Monitor</option>
           </select>
         </div>
         
+        <!-- Trigger Fields -->
+        <div id="trigger-fields">
+          <!-- Schedule -->
+          <div class="trigger-config" data-trigger="schedule">
+            <div class="form-group">
+              <label for="cron">Cron Expression</label>
+              <input type="text" id="cron" placeholder="0 9 * * 1-5" value="0 9 * * *">
+              <small>Format: minute hour day month weekday</small>
+            </div>
+          </div>
+          
+          <!-- Webhook -->
+          <div class="trigger-config" data-trigger="webhook" style="display:none">
+            <div class="form-group">
+              <label for="webhook-port">Port</label>
+              <input type="number" id="webhook-port" placeholder="18796" value="18796">
+            </div>
+            <div class="form-group">
+              <label for="webhook-endpoint">Endpoint</label>
+              <input type="text" id="webhook-endpoint" placeholder="/my-webhook" value="/my-automation">
+            </div>
+          </div>
+          
+          <!-- File Watch -->
+          <div class="trigger-config" data-trigger="file_change" style="display:none">
+            <div class="form-group">
+              <label for="watch-path">Path to Watch</label>
+              <input type="text" id="watch-path" placeholder="~/Projects" value="~/">
+            </div>
+            <div class="form-group">
+              <label>Events</label>
+              <div class="checkbox-group">
+                <label><input type="checkbox" id="event-modify" checked> Modify</label>
+                <label><input type="checkbox" id="event-add" checked> Add</label>
+                <label><input type="checkbox" id="event-delete"> Delete</label>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Email -->
+          <div class="trigger-config" data-trigger="email" style="display:none">
+            <div class="form-group">
+              <label for="email-host">IMAP Host</label>
+              <input type="text" id="email-host" placeholder="imap.gmail.com" value="imap.gmail.com">
+            </div>
+            <div class="form-group">
+              <label for="email-user">Email</label>
+              <input type="email" id="email-user" placeholder="your@email.com">
+            </div>
+            <div class="form-group">
+              <label for="email-interval">Check Interval (seconds)</label>
+              <input type="number" id="email-interval" value="60">
+            </div>
+          </div>
+          
+          <!-- Calendar -->
+          <div class="trigger-config" data-trigger="calendar" style="display:none">
+            <div class="form-group">
+              <label for="calendar-provider">Provider</label>
+              <select id="calendar-provider">
+                <option value="google">Google Calendar</option>
+                <option value="apple">Apple Calendar</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="calendar-interval">Check Interval (minutes)</label>
+              <input type="number" id="calendar-interval" value="5">
+            </div>
+          </div>
+          
+          <!-- System -->
+          <div class="trigger-config" data-trigger="system" style="display:none">
+            <div class="form-group">
+              <label for="sys-cpu">CPU Threshold (%)</label>
+              <input type="number" id="sys-cpu" value="90">
+            </div>
+            <div class="form-group">
+              <label for="sys-mem">Memory Threshold (%)</label>
+              <input type="number" id="sys-mem" value="90">
+            </div>
+            <div class="form-group">
+              <label for="sys-disk">Disk Threshold (%)</label>
+              <input type="number" id="sys-disk" value="95">
+            </div>
+          </div>
+        </div>
+        
+        <!-- Actions -->
         <div class="form-group">
-          <label for="notify-message">Notification Message</label>
-          <input type="text" id="notify-message" placeholder="Automation completed!">
+          <label>Actions</label>
+          <div id="actions-list" class="actions-list">
+            <div class="action-item">
+              <select class="action-type">
+                <option value="shell">💻 Shell Command</option>
+                <option value="agent">🤖 AI Agent</option>
+                <option value="git">🔀 Git</option>
+                <option value="notify">📱 Notify</option>
+                <option value="email_reply">📧 Email Reply</option>
+              </select>
+              <input type="text" class="action-value" placeholder="echo 'Done'">
+              <button type="button" class="btn-remove" onclick="this.parentElement.remove()">×</button>
+            </div>
+          </div>
+          <button type="button" class="btn btn-small btn-secondary" onclick="addAction()">+ Add Action</button>
         </div>
         
         <div class="form-actions">
@@ -124,8 +307,13 @@
     </div>
   </div>
 
-  <!-- Toast Container -->
+  <!-- Toast -->
   <div class="toast-container" id="toast-container"></div>
+
+  <!-- Real-time indicator -->
+  <div class="realtime-badge" id="realtime-badge" title="Real-time updates active">
+    <span class="pulse"></span> Connected
+  </div>
 
   <script src="app.js"></script>
 </body>

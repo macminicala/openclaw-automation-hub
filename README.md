@@ -4,9 +4,9 @@
 
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Node](https://img.shields.io/badge/Node.js-18+-green.svg)
-![Version](https://img.shields.io/badge/Version-0.3.0-orange.svg)
+![Version](https://img.shields.io/badge/Version-0.4.0-orange.svg)
 
-**AI-native automation engine for OpenClaw.** Transform your personal AI assistant from reactive to proactive.
+**AI-native automation engine with Visual Workflow Builder.** Transform your personal AI assistant from reactive to proactive.
 
 [Website](https://openclaw.ai) • [Docs](https://docs.openclaw.ai) • [Discord](https://discord.gg/clawd)
 
@@ -16,34 +16,27 @@
 
 ## 🎯 What is Automation Hub?
 
-Automation Hub is a local-first, AI-native automation engine that transforms OpenClaw from a reactive assistant into a proactive automation powerhouse.
+Automation Hub is a local-first, AI-native automation engine with a beautiful visual dashboard. Unlike cloud tools (IFTTT, Zapier), everything runs **100% locally** on your machine.
 
-Unlike cloud-based tools (IFTTT, Zapier), Automation Hub runs **100% locally** on your machine, respecting your privacy while leveraging your existing OpenClaw agent context.
+### ✨ Key Features (v0.4)
 
-### ✨ Key Features (v0.3)
-
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Schedule Trigger | ✅ | Time-based (cron) automation |
-| Webhook Trigger | ✅ | HTTP endpoint triggers |
-| File Watch Trigger | ✅ | Execute on file changes |
-| **Email Trigger** | ✅ NEW | IMAP email monitoring |
-| **Calendar Trigger** | ✅ NEW | Calendar event monitoring |
-| **System Monitor** | ✅ NEW | CPU/Memory/Disk alerts |
-| AI Agent Action | ✅ | Run AI-powered automations |
-| Git Action | ✅ | Auto-commit and push |
-| Beautiful Dashboard | ✅ | Web UI for management |
-| 100% Local | ✅ | Privacy-first, no cloud |
+| Feature | Description |
+|---------|-------------|
+| 🎨 **Visual Workflow Builder** | Drag & drop to create automations |
+| 📡 **Real-time Dashboard** | WebSocket-powered live updates |
+| ⏰ Schedule Trigger | Time-based (cron) automation |
+| 🔗 Webhook Trigger | HTTP endpoint triggers |
+| 📁 File Watch | Execute on file changes |
+| 📧 Email Monitor | IMAP email monitoring |
+| 📅 Calendar | Event reminders |
+| 🖥️ System Monitor | CPU/Memory/Disk alerts |
+| 🤖 AI Agent Action | Run AI-powered automations |
+| 🔀 Git Action | Auto-commit and push |
+| 🔒 **100% Local** | Privacy-first, no cloud |
 
 ---
 
 ## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js 18+
-- OpenClaw (optional, for full features)
-- macOS, Linux, or WSL2 on Windows
 
 ### Installation
 
@@ -54,143 +47,107 @@ npm install
 ./setup.sh
 ```
 
-### Usage
-
-```bash
-# List all automations
-automation-hub list
-
-# Create an email monitor
-automation-hub create --name "Email Monitor" --trigger email --host imap.gmail.com --user "you@gmail.com"
-
-# Create a calendar reminder
-automation-hub create --name "Meeting Reminder" --trigger calendar
-
-# Create a system monitor
-automation-hub create --name "System Health" --trigger system --cpu-threshold 90
-
-# Enable an automation
-automation-hub enable email-monitor
-
-# Test an automation
-automation-hub test email-monitor
-```
-
----
-
-## 📖 Documentation
-
-### Available Triggers
-
-| Trigger | Description | Example |
-|---------|-------------|---------|
-| `schedule` | Time-based via cron | `"0 9 * * *"` (9AM daily) |
-| `webhook` | HTTP POST/GET endpoint | Port 18796, endpoint `/:id` |
-| `file_change` | Watch files/dirs for changes | Watch `~/projects` |
-| `email` | IMAP email monitoring | Gmail, Outlook, any IMAP |
-| `calendar` | Calendar event monitoring | Google Calendar, Apple Calendar |
-| `system` | CPU/Memory/Disk monitoring | Alert on thresholds |
-
-### Trigger Examples
-
-#### Email Trigger
-```json
-{
-  "trigger": {
-    "type": "email",
-    "host": "imap.gmail.com",
-    "port": 993,
-    "user": "your-email@gmail.com",
-    "folder": "INBOX",
-    "interval": 60
-  }
-}
-```
-
-#### Calendar Trigger
-```json
-{
-  "trigger": {
-    "type": "calendar",
-    "provider": "google",
-    "interval": 5
-  }
-}
-```
-
-#### System Monitor Trigger
-```json
-{
-  "trigger": {
-    "type": "system",
-    "interval": 60,
-    "cpuThreshold": 90,
-    "memoryThreshold": 90,
-    "diskThreshold": 95
-  }
-}
-```
-
-### Available Conditions
-
-| Condition | Description |
-|-----------|-------------|
-| `keyword` | Text contains/excludes value |
-| `time_range` | Within time window |
-| `sender` | From specific email address |
-| `file_pattern` | Match glob patterns |
-| `calendar_event` | Event summary contains text |
-
-### Available Actions
-
-| Action | Description |
-|--------|-------------|
-| `shell` | Execute shell command |
-| `agent` | Run AI agent with prompt |
-| `git` | Git operations (add/commit/push) |
-| `notify` | Send to OpenClaw channel |
-| `email_reply` | Send email reply |
-| `webhook_out` | Call external API |
-
----
-
-## 🤖 AI Agent Action
-
-```json
-{
-  "id": "ai-meeting-prep",
-  "name": "AI Meeting Prep",
-  "enabled": true,
-  "trigger": {
-    "type": "calendar",
-    "interval": 5
-  },
-  "actions": [
-    {
-      "type": "agent",
-      "model": "claude-opus-4-5",
-      "prompt": "Meeting '${event.summary}' starts at ${event.start}. Prepare talking points, check calendar for conflicts, and summarize what needs to be discussed."
-    },
-    {
-      "type": "notify",
-      "channel": "telegram",
-      "message": "☀️ Meeting prep ready for '${event.summary}'"
-    }
-  ]
-}
-```
-
----
-
-## 🎨 Dashboard
-
-The Automation Hub includes a beautiful web dashboard.
+### Start Dashboard
 
 ```bash
 automation-dashboard
 ```
 
 Then open **http://localhost:18795**
+
+---
+
+## 📊 Dashboard Features
+
+```
+┌─────────────────────────────────────────────┐
+│ ⚡ Automation Hub v0.4          [+ New]    │
+├─────────────────────────────────────────────┤
+│ [12] [5 enabled] [7 disabled]              │
+│ [8 schedule] [2 webhook] [2 events]         │
+├─────────────────────────────────────────────┤
+│ ┌─────────────────────────────────────┐   │
+│ │ ☀️ Morning Briefing [✅]            │   │
+│ │ ⏰ 0 9 * * 1-5                     │   │
+│ │ [Run] [Edit] [Delete]              │   │
+│ └─────────────────────────────────────┘   │
+│ ┌─────────────────────────────────────┐   │
+│ │ 🔗 Webhook API [✅]                │   │
+│ │ 🔗 :18796/my-api                  │   │
+│ │ [Run] [Edit] [Delete]              │   │
+│ └─────────────────────────────────────┘   │
+├─────────────────────────────────────────────┤
+│ 📜 Recent Executions                       │
+│ • 14:24 ☀️ Morning Briefing - Success    │
+│ • 14:20 🔗 Webhook - Triggered            │
+└─────────────────────────────────────────────┘
+```
+
+### Visual Workflow Builder
+
+```
+┌──────────┐    ┌──────────┐    ┌──────────┐
+│  TRIGGER │ → │ CONDITION│ → │  ACTION  │
+│    ⚡    │    │    🔍    │    │    🎯    │
+│ Start    │    │ Filter   │    │ Execute  │
+└──────────┘    └──────────┘    └──────────┘
+    │               │               │
+    ▼               ▼               ▼
+ ⏰ Schedule   🔑 Keyword      💻 Shell
+ 🔗 Webhook   ⏰ Time Range    🤖 AI Agent
+ 📁 File      👤 Sender        🔀 Git
+ 📧 Email                      📱 Notify
+ 📅 Calendar
+ 🖥️ System
+```
+
+---
+
+## 📖 Available Triggers
+
+| Trigger | Description | Example |
+|---------|-------------|---------|
+| `schedule` | Time-based cron | `"0 9 * * 1-5"` |
+| `webhook` | HTTP POST/GET | Port 18796, endpoint `/id` |
+| `file_change` | Watch files/dirs | Watch `~/Projects` |
+| `email` | IMAP monitoring | Gmail, Outlook |
+| `calendar` | Event monitoring | Google Calendar |
+| `system` | Resource alerts | CPU > 90% |
+
+## 📋 Available Actions
+
+| Action | Description |
+|--------|-------------|
+| `shell` | Execute command |
+| `agent` | AI-powered automation |
+| `git` | Add → Commit → Push |
+| `notify` | Send to Telegram/WhatsApp |
+| `email_reply` | Auto-reply to emails |
+
+---
+
+## 💻 CLI Usage
+
+```bash
+# List all automations
+automation-hub list
+
+# Create automation
+automation-hub create --name "Morning Briefing" --cron "0 9 * * *"
+
+# Create email monitor
+automation-hub create --name "Email Watch" --trigger email --host imap.gmail.com
+
+# Create webhook
+automation-hub create --name "API" --trigger webhook --port 18800
+
+# Enable/Disable
+automation-hub enable my-automation
+automation-hub disable my-automation
+
+# Test
+automation-hub test my-automation
+```
 
 ---
 
@@ -202,20 +159,19 @@ openclaw-automation-hub/
 │   └── engine.js              # Core engine (v0.3)
 ├── cli/
 │   └── main.js                # CLI commands
-├── dashboard/
-│   ├── server.js              # Dashboard server
+├── dashboard/                  # 🌟 v0.4 Dashboard
+│   ├── server.js              # HTTP + WebSocket server
 │   ├── index.html             # Dashboard UI
-│   ├── styles.css             # Styles
-│   └── app.js                 # Logic
+│   ├── styles.css             # Modern dark theme
+│   └── app.js                 # Dashboard logic
 ├── test/
-│   └── run.js                 # Tests (21 tests)
+│   └── run.js                 # 21 tests
 ├── examples/
 │   ├── morning-briefing.json
 │   ├── webhook-test.json
-│   ├── email-monitor.json     # NEW
-│   ├── calendar-reminder.json # NEW
-│   ├── system-monitor.json    # NEW
-│   └── ai-news-briefing.json
+│   ├── email-monitor.json
+│   ├── calendar-reminder.json
+│   └── system-monitor.json
 ├── setup.sh
 ├── package.json
 └── README.md
@@ -229,7 +185,6 @@ openclaw-automation-hub/
 npm test
 
 ✅ Passed: 21/21
-Coverage: All core features
 ```
 
 ---
@@ -238,11 +193,11 @@ Coverage: All core features
 
 | Version | Features | Status |
 |---------|----------|--------|
-| v0.1 | Schedule, Shell, Notify, Dashboard | ✅ |
-| v0.2 | Webhook, File Watch, Agent, Git | ✅ |
-| **v0.3** | **Email, Calendar, System Monitor** | ✅ |
-| v0.4 | Visual Workflow Builder | ⏳ |
-| v1.0 | AI-Powered Automation | 🔮 |
+| v0.1 | Schedule, Shell, Notify | ✅ |
+| v0.2 | Webhook, File Watch, Agent | ✅ |
+| v0.3 | Email, Calendar, System | ✅ |
+| **v0.4** | **Visual Builder, Real-time** | ✅ |
+| v1.0 | AI Workflow Generator | 🔮 |
 
 ---
 
@@ -250,24 +205,19 @@ Coverage: All core features
 
 | Plan | Price | Features |
 |------|-------|----------|
-| Free | $0 | 5 automations, basic triggers |
-| Pro | $9/mo | Unlimited, email, calendar, system |
-| Team | $29/mo | All + collaboration |
+| Free | $0 | 5 automations |
+| Pro | $9/mo | Unlimited + Email/Calendar |
+| Team | $29/mo | All + Collaboration |
 
 ---
 
 ## 🤝 Contributing
 
-Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md)
-
-### v0.4 Ideas
-
-- [ ] Visual workflow builder (drag & drop)
-- [ ] AI suggestions for automation
-- [ ] Mobile dashboard
-- [ ] Template marketplace
-- [ ] Google Calendar API integration
-- [ ] Outlook integration
+Contributions welcome! Ideas for v1.0:
+- AI-powered workflow generation
+- Natural language automation
+- Mobile companion app
+- Template marketplace
 
 ---
 
