@@ -9,6 +9,9 @@ const path = require('path');
 const url = require('url');
 const { WebSocketServer } = require('ws');
 
+// Use process.argv to get the actual script location (works with symlinks)
+const SCRIPT_DIR = path.dirname(path.resolve(process.argv[1]));
+
 const PORT = process.env.DASHBOARD_PORT || 18799;
 const STORAGE_PATH = '~/.openclaw/automations';
 const LOGS_PATH = '~/.openclaw/logs/automation';
@@ -256,13 +259,7 @@ const server = http.createServer((req, res) => {
   
   // Serve dashboard files
   let filePath = pathname === '/' ? '/index.html' : pathname;
-  const fullPath = path.join(__dirname, 'dashboard', filePath);
-  
-  if (!fullPath.startsWith(path.join(__dirname, 'dashboard'))) {
-    res.writeHead(403);
-    res.end('Forbidden');
-    return;
-  }
+  const fullPath = path.join(SCRIPT_DIR, filePath);
   
   if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
     const ext = path.extname(fullPath);

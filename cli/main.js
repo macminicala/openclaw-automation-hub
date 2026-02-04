@@ -8,6 +8,9 @@ const path = require('path');
 const fs = require('fs');
 const Engine = require('../src/engine');
 
+// Use process.argv to get the actual script location (works with symlinks)
+const SCRIPT_DIR = path.dirname(path.resolve(process.argv[1]));
+
 const STORAGE_PATH = '~/.openclaw/automations';
 
 function getEngine() {
@@ -32,7 +35,7 @@ const commands = {
     console.log('   Press Ctrl+C to stop\n');
     
     const dashboard = spawn('node', ['dashboard/server.js'], {
-      cwd: path.dirname(__dirname),
+      cwd: SCRIPT_DIR,
       stdio: 'inherit'
     });
     
@@ -46,7 +49,7 @@ const commands = {
     console.log('\n🔄 Running installation...\n');
     
     const install = spawn('bash', ['install.sh'], {
-      cwd: path.dirname(__dirname),
+      cwd: SCRIPT_DIR,
       stdio: 'inherit'
     });
     
