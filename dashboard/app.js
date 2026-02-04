@@ -7,19 +7,19 @@ let automations = {};
 
 // Schedule presets with human-readable descriptions
 const SCHEDULE_PRESETS = {
-  'every-hour': { cron: '0 * * * *', desc: 'Runs at the start of every hour' },
+  'every-hour': { cron: '0 * * * *', desc: 'Runs at the start of every hour (minute 0)' },
   'every-day-9am': { cron: '0 9 * * *', desc: 'Runs every day at 9:00 AM' },
   'every-day-6pm': { cron: '0 18 * * *', desc: 'Runs every day at 6:00 PM' },
   'every-monday': { cron: '0 8 * * 1', desc: 'Runs every Monday at 8:00 AM' },
-  'every-weekday': { cron: '0 9 * * 1-5', desc: 'Runs Monday-Friday at 9:00 AM' },
-  'every-month': { cron: '0 9 1 * *', desc: 'Runs on the 1st of every month at 9:00 AM' }
+  'every-weekday': { cron: '0 9 * * 1-5', desc: 'Runs Monday through Friday at 9:00 AM' },
+  'every-month': { cron: '0 9 1 * *', desc: 'Runs on the 1st day of every month at 9:00 AM' }
 };
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
   loadAutomations();
   setupEventListeners();
-  logActivity('Dashboard connected', 'info');
+  logActivity('Ready! Create your first automation.', 'info');
 });
 
 // ============ API FUNCTIONS ============
@@ -33,42 +33,43 @@ async function loadAutomations() {
     renderAutomations();
   } catch (error) {
     console.error('Failed to load automations:', error);
-    logActivity('Failed to load automations: ' + error.message, 'error');
+    logActivity(`Failed to load automations: Check your connection.`, 'error');
   }
 }
 
 async function toggleAutomation(id, enabled) {
-  const endpoint = enabled ? 'disable' : 'enable';
+  const endpoint = enabled ? 'enable' : 'disable';
   try {
     await fetch(`${API_URL}/automations/${id}/${endpoint}`, { method: 'POST' });
     await loadAutomations();
-    logActivity(`${enabled ? 'Disabled' : 'Enabled'}: ${id}`, 'success');
+    logActivity(`Enabled: ${automations[id]?.name || id}`, 'success');
     showToast(`${enabled ? 'Disabled' : 'Enabled'} successfully`, 'success');
   } catch (error) {
-    showToast('Operation failed', 'error');
+    showToast('Something went wrong. Please try again.', 'error');
   }
 }
 
 async function runAutomation(id) {
   try {
     await fetch(`${API_URL}/automations/${id}/run`, { method: 'POST' });
-    logActivity(`Triggered: ${id}`, 'info');
+    logActivity(`Ran: ${automations[id]?.name || id}`, 'info');
     showToast('Automation executed!', 'success');
   } catch (error) {
-    showToast('Run failed', 'error');
+    showToast("Couldn't run the automation. Check your connection.", 'error');
   }
 }
 
 async function deleteAutomation(id) {
-  if (!confirm(`Delete "${id}"? This cannot be undone.`)) return;
+  const automationName = automations[id]?.name || id;
+  if (!confirm(`Are you sure you want to delete "${automationName}"? This cannot be undone.`)) return;
   
   try {
     await fetch(`${API_URL}/automations/${id}`, { method: 'DELETE' });
     await loadAutomations();
-    logActivity(`Deleted: ${id}`, 'warning');
+    logActivity(`Deleted: ${automationName}`, 'warning');
     showToast('Automation deleted', 'success');
   } catch (error) {
-    showToast('Delete failed', 'error');
+    showToast("Couldn't delete. Please try again.", 'error');
   }
 }
 
@@ -83,7 +84,7 @@ async function saveAutomation(automation) {
     logActivity(`Created: ${automation.name}`, 'success');
     showToast('Automation saved!', 'success');
   } catch (error) {
-    showToast('Save failed: ' + error.message, 'error');
+    showToast('Save failed: Something went wrong. Please try again.', 'error');
   }
 }
 
@@ -97,8 +98,12 @@ function updateStats(stats) {
 function renderAutomations() {
   const grid = document.getElementById('automations-grid');
   const emptyState = document.getElementById('empty-state');
+  const searchInput = document.getElementById('search-input');
+  const searchTerm = (searchInput?.value || '').toLowerCase();
   
-  const list = Object.values(automations);
+  const list = Object.values(automations).filter(a => 
+    !searchTerm || (a.name || '').toLowerCase().includes(searchTerm)
+  );
   
   if (list.length === 0) {
     grid.style.display = 'none';
@@ -132,10 +137,10 @@ function renderAutomations() {
       
       <div class="card-actions">
         <button class="btn btn-secondary btn-small" onclick="toggleAutomation('${escapeHtml(automation.id)}', ${automation.enabled})">
-          ${automation.enabled ? '⏸ Pause' : '▶ Start'}
+          ${automation.enabled ? '⏸ Disable' : '▶ Enable'}
         </button>
         <button class="btn btn-secondary btn-small" onclick="runAutomation('${escapeHtml(automation.id)}')">
-          ⚡ Run
+          ⚡ Run Now
         </button>
         <button class="btn btn-secondary btn-small" onclick="editAutomation('${escapeHtml(automation.id)}')">
           ✏️ Edit
@@ -153,9 +158,12 @@ function getActionDescription(automation) {
   if (!action) return 'No action configured';
   
   switch (action.type) {
-    case 'shell': return `Run: ${action.command || action.exec || 'command'}`;
-    case 'notify': return `Notify: ${action.message || 'message'}`;
-    case 'email': return `Email to: ${action.to || action.recipient || 'recipient'}`;
+    case 'shell': 
+      const cmd = action.command || action.exec || 'command';
+      const shortCmd = cmd.length > 20 ? cmd.substring(0, 17) + '...' : cmd;
+      return `Command: ${shortCmd}`;
+    case 'notify': return 'Notification set';
+    case 'email': return 'Email to: [hidden]';
     case 'agent': return 'AI Agent task';
     default: return action.type;
   }
@@ -169,7 +177,7 @@ function getScheduleDescription(cron) {
     if (val.cron === cron) return val.desc;
   }
   
-  return `Cron: ${cron}`;
+  return 'Custom schedule';
 }
 
 function getActionIcon(type) {
@@ -187,6 +195,10 @@ function getActionIcon(type) {
 
 function setupEventListeners() {
   document.getElementById('automation-form').addEventListener('submit', handleFormSubmit);
+  const searchInput = document.getElementById('search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => renderAutomations());
+  }
 }
 
 // ============ FORM HANDLERS ============
@@ -248,7 +260,7 @@ function handleFormSubmit(e) {
     case 'command':
       const command = document.getElementById('command-input').value.trim();
       if (!command) {
-        showToast('Please enter a command', 'error');
+        showToast('Enter the command you want to run', 'error');
         return;
       }
       automation.actions.push({ type: 'shell', command: command });
@@ -257,7 +269,7 @@ function handleFormSubmit(e) {
     case 'notify':
       const message = document.getElementById('notify-message').value.trim();
       if (!message) {
-        showToast('Please enter a message', 'error');
+        showToast('Enter the notification message', 'error');
         return;
       }
       automation.actions.push({ type: 'notify', channel: 'telegram', message: message });
@@ -269,7 +281,7 @@ function handleFormSubmit(e) {
       const body = document.getElementById('email-body').value.trim();
       
       if (!to || !subject || !body) {
-        showToast('Please fill in all email fields', 'error');
+        showToast('Please fill in all email fields (to, subject, message)', 'error');
         return;
       }
       automation.actions.push({ 
@@ -297,7 +309,8 @@ function editAutomation(id) {
   
   const action = a.actions?.[0];
   
-  document.getElementById('modal-title').textContent = 'Edit Automation';
+  document.getElementById('modal-title').textContent = 'Edit Automation (Editing)';
+  document.getElementById('modal').classList.add('editing-mode');
   document.getElementById('edit-id').value = id;
   document.getElementById('name').value = a.name || id;
   
@@ -358,6 +371,7 @@ function openNewAutomation() {
 function closeModal() {
   document.getElementById('modal-overlay').classList.remove('active');
   document.getElementById('modal').classList.remove('active');
+  document.getElementById('modal').classList.remove('editing-mode');
 }
 
 // ============ UTILITY ============
@@ -371,7 +385,7 @@ function escapeHtml(text) {
 
 function logActivity(message, type = 'info') {
   const feed = document.getElementById('activity-feed');
-  const time = new Date().toLocaleTimeString();
+  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const item = document.createElement('div');
   item.className = `log-item log-${type}`;
   item.innerHTML = `<span>${escapeHtml(message)}</span><span>${time}</span>`;
