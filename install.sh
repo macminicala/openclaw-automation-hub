@@ -81,6 +81,13 @@ CMDCAT
     fi
     
     success "Automation Hub installed!"
+    
+    echo ""
+    log "Reloading shell..."
+    source ~/.zshrc 2>/dev/null || true
+    
+    echo ""
+    success "Ready! Run: automationhub dashboard"
 }
 
 # Run tests
