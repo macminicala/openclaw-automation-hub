@@ -1,126 +1,168 @@
 ---
 name: automation-hub
-description: Create and manage AI-native automations with triggers, conditions, and actions. Transform OpenClaw from reactive assistant to proactive automation engine.
-homepage: https://github.com/openclaw/openclaw
-author: MiniCala for Croccaroc
-keywords: [automation, workflows, triggers, ifttt, zapier, local, privacy]
+description: AI-native automation engine for OpenClaw. Create triggers, conditions, and actions for proactive automation.
+homepage: https://github.com/macminicala/openclaw-automation-hub
+keywords: [automation, workflows, triggers, ai, local]
 metadata:
   openclaw:
     emoji: ⚡
     requires:
-      bins: []
+      bins: ["node"]
       env: []
-    permissions: []
+    install:
+      [
+        {
+          id: "automation-hub-install",
+          kind: "node",
+          label: "Install Automation Hub",
+        },
+      ]
 ---
 
-# OpenClaw Automation Hub
+# ⚡ OpenClaw Automation Hub
 
-Create intelligent automations that run locally, powered by your OpenClaw agent.
+AI-native automation engine for OpenClaw. Transform your personal AI assistant from reactive to proactive.
 
 ## Quick Start
 
+### Install
+
 ```bash
-# Create a time-based automation
-openclaw automation create --name "Morning Briefing" \
-  --trigger "schedule" --cron "0 8 * * 1-5" \
-  --action "agent" --prompt "Check calendar, summarize today"
+# Clone and install dependencies
+cd ~/.openclaw/skills/automation-hub
+npm install
 
-# List all automations
-openclaw automation list
-
-# Enable an automation
-openclaw automation enable morning-briefing
-
-# Test an automation
-openclaw automation test morning-briefing
+# Run tests
+npm test
 ```
 
-## Core Concepts
+### Use
+
+```bash
+# Start dashboard
+node dashboard/server.js
+
+# Open browser
+open http://localhost:18795
+```
+
+## Features
 
 ### Triggers
-What starts an automation:
-- `schedule` - Time-based (cron expression)
-- `webhook` - HTTP POST/GET received
-- `file_change` - File modified/deleted/created
-- `email` - Email received (IMAP)
-- `calendar` - Event starts/ends
+- **Schedule** - Time-based (cron)
+- **Webhook** - HTTP endpoint
+- **File Watch** - Monitor file changes
+- **Email** - IMAP polling
+- **Calendar** - Event monitoring
+- **System** - CPU/Memory/Disk alerts
 
 ### Conditions
-Filters before execution:
-- `keyword` - Text contains/doesn't contain
-- `sender` - From specific address/user
-- `time_range` - Within time window
-- `file_pattern` - Match glob patterns
-- `size` - File size comparison
+- **Keyword** - Text matching
+- **Time Range** - Within time window
+- **Sender** - From specific source
+- **File Pattern** - Glob matching
+- **Calendar Event** - Event filtering
 
 ### Actions
-What happens when triggered:
-- `agent` - Run agent with custom prompt
-- `shell` - Execute shell command
-- `notify` - Send message to channel
-- `git` - Git operations (commit, push)
-- `webhook_out` - Call external API
-- `summarize` - Summarize content
+- **Shell** - Execute commands
+- **Agent** - AI-powered automation
+- **Git** - Auto-commit/push
+- **Notify** - Send to channels
+- **Email Reply** - Auto-respond
 
-## Automation Format
+## Dashboard
 
-```yaml
-id: my-automation
-name: My Automation
-enabled: true
+The Automation Hub includes a beautiful web dashboard at **http://localhost:18795**
 
-trigger:
-  type: schedule
-  cron: "0 9 * * 1-5"
-
-conditions:
-  - type: time_range
-    start: "08:00"
-    end: "18:00"
-
-actions:
-  - type: agent
-    model: claude-opus-4
-    prompt: "Check calendar, summarize today's meetings"
-
-  - type: notify
-    channel: telegram
-    message: "☀️ Day prep complete"
-```
+Features:
+- Visual workflow builder
+- Real-time updates (WebSocket)
+- Execution logs
+- Enable/disable automations
 
 ## CLI Commands
 
-| Command | Description |
-|---------|-------------|
-| `automation create` | Create new automation |
-| `automation list` | List all automations |
-| `automation enable <id>` | Enable automation |
-| `automation disable <id>` | Disable automation |
-| `automation test <id>` | Test automation dry-run |
-| `automation logs <id>` | View execution logs |
-| `automation delete <id>` | Delete automation |
+```bash
+# List automations
+node cli/main.js list
+
+# Create automation
+node cli/main.js create --name "My Auto" --cron "0 9 * * *"
+
+# Enable/Disable
+node cli/main.js enable my-automation
+node cli/main.js disable my-automation
+
+# Test
+node cli/main.js test my-automation
+```
+
+## Directory Structure
+
+```
+~/.openclaw/skills/automation-hub/
+├── src/
+│   └── engine.js           # Core engine
+├── cli/
+│   └── main.js             # CLI commands
+├── dashboard/
+│   ├── server.js           # Dashboard HTTP + WebSocket
+│   ├── index.html          # Dashboard UI
+│   ├── styles.css          # Styles
+│   └── app.js              # Dashboard logic
+├── test/
+│   └── run.js              # 31 tests
+├── examples/
+│   ├── morning-briefing.json
+│   ├── webhook-test.json
+│   ├── email-monitor.json
+│   ├── calendar-reminder.json
+│   └── system-monitor.json
+├── SKILL.md                # This file
+├── package.json
+└── README.md
+```
+
+## Testing
+
+```bash
+# Run all tests (31 tests, full coverage)
+npm test
+
+Expected output:
+✅ Passed: 31
+✅ Failed: 0
+🎉 All tests passed!
+```
 
 ## Configuration
 
-Set storage path in `~/.openclaw/openclaw.json`:
+Automations are stored in `~/.openclaw/automations/`
 
+Example automation:
 ```json
 {
-  "skills": {
-    "automation-hub": {
-      "storagePath": "~/.openclaw/automations",
-      "defaultCooldown": "5m",
-      "maxConcurrent": 3,
-      "logRetention": "7d"
+  "id": "morning-briefing",
+  "name": "Morning Briefing",
+  "enabled": true,
+  "trigger": {
+    "type": "schedule",
+    "cron": "0 8 * * 1-5"
+  },
+  "actions": [
+    {
+      "type": "shell",
+      "command": "echo 'Good morning!'"
     }
-  }
+  ]
 }
 ```
 
-## Privacy
+## Support
 
-All automations run locally. No data leaves your device.
+- GitHub: https://github.com/macminicala/openclaw-automation-hub
+- Discord: https://discord.gg/clawd
 
-- Storage: Local JSON/SQLite
-- Webhooks: Local server only
-- Execution: On your machine
+## License
+
+MIT

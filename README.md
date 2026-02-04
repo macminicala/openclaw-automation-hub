@@ -1,14 +1,14 @@
-# ⚡ OpenClaw Automation Hub
+# ⚡ OpenClaw Automation Hub Skill
 
 <div align="center">
 
 ![License](https://img.shields.io/badge/License-MIT-blue.svg)
 ![Node](https://img.shields.io/badge/Node.js-18+-green.svg)
-![Version](https://img.shields.io/badge/Version-0.4.0-orange.svg)
+![OpenClaw](https://img.shields.io/badge/OpenClaw-Skill-blue.svg)
 
-**AI-native automation engine with Visual Workflow Builder.** Transform your personal AI assistant from reactive to proactive.
+**AI-native automation engine for OpenClaw.** Transform your personal AI assistant from reactive to proactive.
 
-[Website](https://openclaw.ai) • [Docs](https://docs.openclaw.ai) • [Discord](https://discord.gg/clawd)
+[GitHub](https://github.com/macminicala/openclaw-automation-hub) • [Docs](./SKILL.md) • [Discord](https://discord.gg/clawd)
 
 </div>
 
@@ -16,165 +16,154 @@
 
 ## 🎯 What is Automation Hub?
 
-Automation Hub is a local-first, AI-native automation engine with a beautiful visual dashboard. Unlike cloud tools (IFTTT, Zapier), everything runs **100% locally** on your machine.
+Automation Hub is an **OpenClaw skill** that adds powerful automation capabilities to your personal AI assistant.
 
-### ✨ Key Features (v0.4)
-
-| Feature | Description |
-|---------|-------------|
-| 🎨 **Visual Workflow Builder** | Drag & drop to create automations |
-| 📡 **Real-time Dashboard** | WebSocket-powered live updates |
-| ⏰ Schedule Trigger | Time-based (cron) automation |
-| 🔗 Webhook Trigger | HTTP endpoint triggers |
-| 📁 File Watch | Execute on file changes |
-| 📧 Email Monitor | IMAP email monitoring |
-| 📅 Calendar | Event reminders |
-| 🖥️ System Monitor | CPU/Memory/Disk alerts |
-| 🤖 AI Agent Action | Run AI-powered automations |
-| 🔀 Git Action | Auto-commit and push |
-| 🔒 **100% Local** | Privacy-first, no cloud |
+As an OpenClaw skill:
+- Installs to `~/.openclaw/skills/automation-hub/`
+- Integrates with OpenClaw's workflow system
+- Uses OpenClaw's notification channels (Telegram, WhatsApp, etc.)
+- Follows OpenClaw's skill conventions
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Installation
 
-### Installation
+### Method 1: Clone & Install
 
 ```bash
-git clone https://github.com/macminicala/openclaw-automation-hub.git
-cd openclaw-automation-hub
+# Clone to skills directory
+git clone https://github.com/macminicala/openclaw-automation-hub.git ~/.openclaw/skills/automation-hub
+
+# Install
+cd ~/.openclaw/skills/automation-hub
+bash install-skill.sh
+```
+
+### Method 2: Manual Copy
+
+```bash
+# Copy skill files
+cp -r automation-hub ~/.openclaw/skills/
+
+# Install dependencies
+cd ~/.openclaw/skills/automation-hub
 npm install
-./setup.sh
-```
-
-### Start Dashboard
-
-```bash
-automation-dashboard
-```
-
-Then open **http://localhost:18795**
-
----
-
-## 📊 Dashboard Features
-
-```
-┌─────────────────────────────────────────────┐
-│ ⚡ Automation Hub v0.4          [+ New]    │
-├─────────────────────────────────────────────┤
-│ [12] [5 enabled] [7 disabled]              │
-│ [8 schedule] [2 webhook] [2 events]         │
-├─────────────────────────────────────────────┤
-│ ┌─────────────────────────────────────┐   │
-│ │ ☀️ Morning Briefing [✅]            │   │
-│ │ ⏰ 0 9 * * 1-5                     │   │
-│ │ [Run] [Edit] [Delete]              │   │
-│ └─────────────────────────────────────┘   │
-│ ┌─────────────────────────────────────┐   │
-│ │ 🔗 Webhook API [✅]                │   │
-│ │ 🔗 :18796/my-api                  │   │
-│ │ [Run] [Edit] [Delete]              │   │
-│ └─────────────────────────────────────┘   │
-├─────────────────────────────────────────────┤
-│ 📜 Recent Executions                       │
-│ • 14:24 ☀️ Morning Briefing - Success    │
-│ • 14:20 🔗 Webhook - Triggered            │
-└─────────────────────────────────────────────┘
-```
-
-### Visual Workflow Builder
-
-```
-┌──────────┐    ┌──────────┐    ┌──────────┐
-│  TRIGGER │ → │ CONDITION│ → │  ACTION  │
-│    ⚡    │    │    🔍    │    │    🎯    │
-│ Start    │    │ Filter   │    │ Execute  │
-└──────────┘    └──────────┘    └──────────┘
-    │               │               │
-    ▼               ▼               ▼
- ⏰ Schedule   🔑 Keyword      💻 Shell
- 🔗 Webhook   ⏰ Time Range    🤖 AI Agent
- 📁 File      👤 Sender        🔀 Git
- 📧 Email                      📱 Notify
- 📅 Calendar
- 🖥️ System
+npm test
 ```
 
 ---
 
-## 📖 Available Triggers
-
-| Trigger | Description | Example |
-|---------|-------------|---------|
-| `schedule` | Time-based cron | `"0 9 * * 1-5"` |
-| `webhook` | HTTP POST/GET | Port 18796, endpoint `/id` |
-| `file_change` | Watch files/dirs | Watch `~/Projects` |
-| `email` | IMAP monitoring | Gmail, Outlook |
-| `calendar` | Event monitoring | Google Calendar |
-| `system` | Resource alerts | CPU > 90% |
-
-## 📋 Available Actions
-
-| Action | Description |
-|--------|-------------|
-| `shell` | Execute command |
-| `agent` | AI-powered automation |
-| `git` | Add → Commit → Push |
-| `notify` | Send to Telegram/WhatsApp |
-| `email_reply` | Auto-reply to emails |
-
----
-
-## 💻 CLI Usage
-
-```bash
-# List all automations
-automation-hub list
-
-# Create automation
-automation-hub create --name "Morning Briefing" --cron "0 9 * * *"
-
-# Create email monitor
-automation-hub create --name "Email Watch" --trigger email --host imap.gmail.com
-
-# Create webhook
-automation-hub create --name "API" --trigger webhook --port 18800
-
-# Enable/Disable
-automation-hub enable my-automation
-automation-hub disable my-automation
-
-# Test
-automation-hub test my-automation
-```
-
----
-
-## 📂 Project Structure
+## 📦 What's Included
 
 ```
-openclaw-automation-hub/
+~/.openclaw/skills/automation-hub/
 ├── src/
-│   └── engine.js              # Core engine (v0.3)
+│   └── engine.js              # Core automation engine
 ├── cli/
 │   └── main.js                # CLI commands
-├── dashboard/                  # 🌟 v0.4 Dashboard
-│   ├── server.js              # HTTP + WebSocket server
-│   ├── index.html             # Dashboard UI
-│   ├── styles.css             # Modern dark theme
-│   └── app.js                 # Dashboard logic
+├── dashboard/
+│   ├── server.js             # Dashboard (HTTP + WebSocket)
+│   ├── index.html            # Dashboard UI
+│   ├── styles.css           # Modern dark theme
+│   └── app.js               # Dashboard logic
 ├── test/
-│   └── run.js                 # 21 tests
+│   └── run.js                # 31 comprehensive tests
 ├── examples/
 │   ├── morning-briefing.json
 │   ├── webhook-test.json
 │   ├── email-monitor.json
 │   ├── calendar-reminder.json
 │   └── system-monitor.json
-├── setup.sh
+├── SKILL.md                  # OpenClaw skill metadata
 ├── package.json
 └── README.md
+```
+
+---
+
+## 🌐 Dashboard
+
+Start the dashboard:
+```bash
+cd ~/.openclaw/skills/automation-hub
+node dashboard/server.js
+```
+
+Open **http://localhost:18795**
+
+Features:
+- Visual workflow builder
+- Real-time updates (WebSocket)
+- Create/Edit/Delete automations
+- Enable/Disable toggles
+- Execution logs
+- Statistics overview
+
+---
+
+## ✨ Features
+
+### Triggers
+| Trigger | Description |
+|---------|-------------|
+| `schedule` | Time-based (cron expression) |
+| `webhook` | HTTP endpoint |
+| `file_change` | File/directory watching |
+| `email` | IMAP email monitoring |
+| `calendar` | Calendar event reminders |
+| `system` | CPU/Memory/Disk alerts |
+
+### Conditions
+| Condition | Description |
+|-----------|-------------|
+| `keyword` | Text matching |
+| `time_range` | Time window |
+| `sender` | From specific source |
+| `file_pattern` | Glob matching |
+| `calendar_event` | Event filtering |
+
+### Actions
+| Action | Description |
+|--------|-------------|
+| `shell` | Execute shell commands |
+| `agent` | AI-powered automation |
+| `git` | Auto-commit and push |
+| `notify` | Send to OpenClaw channels |
+| `email_reply` | Auto-reply to emails |
+
+---
+
+## 📖 Usage
+
+### CLI Commands
+
+```bash
+cd ~/.openclaw/skills/automation-hub
+
+# List all automations
+node cli/main.js list
+
+# Create automation
+node cli/main.js create --name "Morning Briefing" --cron "0 9 * * 1-5"
+
+# Enable/Disable
+node cli/main.js enable morning-briefing
+node cli/main.js disable morning-briefing
+
+# Test
+node cli/main.js test morning-briefing
+```
+
+### Webhook Example
+
+Create a webhook automation:
+```bash
+node cli/main.js create --name "API Trigger" --trigger webhook --port 18800
+```
+
+Trigger it:
+```bash
+curl -X POST http://localhost:18800/api-trigger -d '{"test":true}'
 ```
 
 ---
@@ -182,42 +171,71 @@ openclaw-automation-hub/
 ## 🧪 Testing
 
 ```bash
+cd ~/.openclaw/skills/automation-hub
 npm test
 
-✅ Passed: 21/21
+# Output:
+# ✅ Passed: 31
+# ✅ Failed: 0
+# 🎉 All tests passed!
 ```
+
+---
+
+## 📁 Automation Storage
+
+Automations are stored as JSON files:
+
+```
+~/.openclaw/automations/
+├── morning-briefing.json
+├── webhook-test.json
+└── system-monitor.json
+```
+
+Example automation:
+```json
+{
+  "id": "morning-briefing",
+  "name": "Morning Briefing",
+  "enabled": true,
+  "trigger": {
+    "type": "schedule",
+    "cron": "0 8 * * 1-5"
+  },
+  "actions": [
+    {
+      "type": "shell",
+      "command": "echo '☀️ Good morning!'"
+    }
+  ]
+}
+```
+
+---
+
+## 🔧 Configuration
+
+No additional configuration required. The skill works out of the box.
+
+For custom settings, edit `~/.openclaw/automations/<automation>.json`
 
 ---
 
 ## 📈 Roadmap
 
-| Version | Features | Status |
-|---------|----------|--------|
-| v0.1 | Schedule, Shell, Notify | ✅ |
-| v0.2 | Webhook, File Watch, Agent | ✅ |
-| v0.3 | Email, Calendar, System | ✅ |
-| **v0.4** | **Visual Builder, Real-time** | ✅ |
-| v1.0 | AI Workflow Generator | 🔮 |
-
----
-
-## 💰 Monetization
-
-| Plan | Price | Features |
-|------|-------|----------|
-| Free | $0 | 5 automations |
-| Pro | $9/mo | Unlimited + Email/Calendar |
-| Team | $29/mo | All + Collaboration |
+| Version | Features |
+|---------|----------|
+| v0.4 | ✅ Dashboard, All triggers, All actions |
+| v1.0 | AI Workflow Generator, Natural language creation |
 
 ---
 
 ## 🤝 Contributing
 
-Contributions welcome! Ideas for v1.0:
-- AI-powered workflow generation
-- Natural language automation
-- Mobile companion app
-- Template marketplace
+Issues and PRs welcome!
+
+https://github.com/macminicala/openclaw-automation-hub/issues
 
 ---
 
@@ -229,7 +247,7 @@ MIT - See [LICENSE](LICENSE)
 
 <div align="center">
 
-**Built with ❤️ for the OpenClaw community**
+**Built for the OpenClaw community** 🦞
 
 [GitHub](https://github.com/macminicala/openclaw-automation-hub) • [Discord](https://discord.gg/clawd)
 
