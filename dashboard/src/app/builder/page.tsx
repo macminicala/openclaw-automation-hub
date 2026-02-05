@@ -26,7 +26,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { ArrowLeft, Save, GripVertical, Calendar, Settings, Mail, Monitor, GitBranch, Bell, Folder, Globe, Clock } from "lucide-react"
+import { ArrowLeft, Save, GripVertical, Calendar, Settings, Mail, Monitor, GitBranch, Bell, Folder, Globe, Clock, Edit3, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 const API_URL = "http://localhost:18799/api"
@@ -128,6 +128,21 @@ function TriggerNode({ data, isConnectable }: any) {
         </div>
       </div>
       <Handle type="source" position={Position.Right} isConnectable={isConnectable} className="w-3 h-3 bg-white" />
+      
+      <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+        <button
+          onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("editNode", { detail: data })) }}
+          className="p-1 bg-white rounded-full shadow hover:bg-gray-100"
+        >
+          <Edit3 className="w-3 h-3 text-gray-700" />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("deleteNode", { detail: data.id })) }}
+          className="p-1 bg-white rounded-full shadow hover:bg-red-100"
+        >
+          <Trash2 className="w-3 h-3 text-red-600" />
+        </button>
+      </div>
     </div>
   )
 }
@@ -154,6 +169,21 @@ function ActionNode({ data, isConnectable }: any) {
         </div>
       </div>
       <Handle type="source" position={Position.Right} isConnectable={isConnectable} className="w-3 h-3 bg-white" />
+      
+      <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+        <button
+          onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("editNode", { detail: data })) }}
+          className="p-1 bg-white rounded-full shadow hover:bg-gray-100"
+        >
+          <Edit3 className="w-3 h-3 text-gray-700" />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("deleteNode", { detail: data.id })) }}
+          className="p-1 bg-white rounded-full shadow hover:bg-red-100"
+        >
+          <Trash2 className="w-3 h-3 text-red-600" />
+        </button>
+      </div>
     </div>
   )
 }
@@ -174,6 +204,7 @@ function BuilderContent() {
   const [automationId, setAutomationId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [configNode, setConfigNode] = useState<Node | null>(null)
+  const [deleteNodeId, setDeleteNodeId] = useState<string | null>(null)
   const [tempConfig, setTempConfig] = useState<Record<string, string>>({})
 
   const [scheduleFreq, setScheduleFreq] = useState("daily")
@@ -188,6 +219,27 @@ function BuilderContent() {
       loadAutomation(id)
     }
   }, [searchParams])
+
+  useEffect(() => {
+    const handleEditNode = (e: Event) => {
+      const nodeData = (e as CustomEvent).detail
+      const node = nodes.find(n => n.id === nodeData.id)
+      if (node) openConfig(node)
+    }
+
+    const handleDeleteNode = (e: Event) => {
+      const nodeId = (e as CustomEvent).detail
+      setDeleteNodeId(nodeId)
+    }
+
+    window.addEventListener("editNode", handleEditNode)
+    window.addEventListener("deleteNode", handleDeleteNode)
+
+    return () => {
+      window.removeEventListener("editNode", handleEditNode)
+      window.removeEventListener("deleteNode", handleDeleteNode)
+    }
+  }, [nodes])
 
   const loadAutomation = async (id: string) => {
     try {
@@ -327,6 +379,15 @@ function BuilderContent() {
     setConfigNode(null)
     setTempConfig({})
   }, [])
+
+  const confirmDelete = () => {
+    if (deleteNodeId) {
+      setNodes((nds) => nds.filter(n => n.id !== deleteNodeId))
+      setEdges((eds) => eds.filter(e => e.source !== deleteNodeId && e.target !== deleteNodeId))
+      toast.success("Nodo eliminato")
+      setDeleteNodeId(null)
+    }
+  }
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     setNodes((nds) => {
@@ -839,6 +900,28 @@ function BuilderContent() {
             </DialogDescription>
           </DialogHeader>
           {renderConfigContent()}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteNodeId} onOpenChange={(open) => !open && setDeleteNodeId(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="h-5 w-5" />
+              Elimina Nodo
+            </DialogTitle>
+            <DialogDescription>
+              Sei sicuro di voler eliminare questo nodo? L&apos;azione non può essere annullata.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 justify-end mt-4">
+            <Button variant="outline" onClick={() => setDeleteNodeId(null)}>
+              Annulla
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Elimina
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
