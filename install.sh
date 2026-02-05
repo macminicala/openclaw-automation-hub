@@ -107,6 +107,31 @@ check_skill_dir() {
     [ -d "$SKILL_DIR" ] || error "Automation Hub not found. Run: automationhub install"
 }
 
+# Check if process is running
+is_api_running() {
+    # Check PID file first
+    if [ -f /tmp/automation-api.pid ]; then
+        PID=$(cat /tmp/automation-api.pid 2>/dev/null | tr -d '[:space:]')
+        if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+            return 0
+        fi
+    fi
+    # Fallback: check if process is running
+    pgrep -f "api-server.js" >/dev/null 2>&1
+}
+
+is_dashboard_running() {
+    # Check PID file first
+    if [ -f /tmp/automation-dashboard.pid ]; then
+        PID=$(cat /tmp/automation-dashboard.pid 2>/dev/null | tr -d '[:space:]')
+        if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
+            return 0
+        fi
+    fi
+    # Fallback: check if process is running
+    pgrep -f "next.*dev" >/dev/null 2>&1
+}
+
 cmd_install() {
     log "Installing Automation Hub..."
     if [ ! -d "$SKILL_DIR" ]; then
@@ -128,20 +153,19 @@ cmd_list() {
 cmd_dashboard() {
     check_skill_dir
     local action="${2:-status}"
-    local pidfile="/tmp/automation-dashboard.pid"
 
     case "$action" in
         start)
             log "Starting Dashboard..."
-            if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
+            if is_dashboard_running; then
                 warn "Dashboard already running"
             else
                 log "Starting Next.js dev server..."
                 cd "$SKILL_DIR/dashboard"
                 nohup npm run dev > /tmp/automation-dashboard.log 2>&1 &
-                echo $! > "$pidfile"
+                echo $! > /tmp/automation-dashboard.pid
                 sleep 3
-                if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
+                if is_dashboard_running; then
                     success "Dashboard started on port 3000"
                 else
                     error "Failed to start Dashboard. Check: cat /tmp/automation-dashboard.log"
@@ -150,22 +174,26 @@ cmd_dashboard() {
             ;;
         stop)
             log "Stopping Dashboard..."
-            if [ -f "$pidfile" ]; then
-                PID=$(cat "$pidfile")
-                if kill "$PID" 2>/dev/null; then
-                    rm -f "$pidfile"
+            if is_dashboard_running; then
+                PID=$(pgrep -f "next.*dev" 2>/dev/null | head -1)
+                if [ -n "$PID" ]; then
+                    kill "$PID" 2>/dev/null
+                    rm -f /tmp/automation-dashboard.pid
                     success "Dashboard stopped"
                 else
-                    warn "Could not stop Dashboard"
-                    rm -f "$pidfile"
+                    warn "Could not find Dashboard process"
+                    rm -f /tmp/automation-dashboard.pid
                 fi
             else
-                warn "Dashboard not running (no PID file)"
+                warn "Dashboard not running"
+                rm -f /tmp/automation-dashboard.pid
             fi
             ;;
         status|*)
-            if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
-                echo -e "🌐 Dashboard: ${GREEN}Running${NC} (PID: $(cat "$pidfile"))"
+            if is_dashboard_running; then
+                PID=$(cat /tmp/automation-dashboard.pid 2>/dev/null | tr -d '[:space:]')
+                echo -e "🌐 Dashboard: ${GREEN}Running${NC} (port 3000)"
+                [ -n "$PID" ] && echo "   PID: $PID"
             else
                 echo -e "🌐 Dashboard: ${RED}Stopped${NC}"
             fi
@@ -176,20 +204,19 @@ cmd_dashboard() {
 cmd_api() {
     check_skill_dir
     local action="${2:-status}"
-    local pidfile="/tmp/automation-api.pid"
 
     case "$action" in
         start)
             log "Starting API Server..."
-            if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
+            if is_api_running; then
                 warn "API already running"
             else
                 log "Starting Node API server..."
                 cd "$SKILL_DIR"
                 nohup node api-server.js > /tmp/automation-api.log 2>&1 &
-                echo $! > "$pidfile"
+                echo $! > /tmp/automation-api.pid
                 sleep 2
-                if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
+                if is_api_running; then
                     success "API started on port 18799"
                 else
                     error "Failed to start API. Check: cat /tmp/automation-api.log"
@@ -198,22 +225,26 @@ cmd_api() {
             ;;
         stop)
             log "Stopping API..."
-            if [ -f "$pidfile" ]; then
-                PID=$(cat "$pidfile")
-                if kill "$PID" 2>/dev/null; then
-                    rm -f "$pidfile"
+            if is_api_running; then
+                PID=$(pgrep -f "api-server.js" 2>/dev/null | head -1)
+                if [ -n "$PID" ]; then
+                    kill "$PID" 2>/dev/null
+                    rm -f /tmp/automation-api.pid
                     success "API stopped"
                 else
-                    warn "Could not stop API"
-                    rm -f "$pidfile"
+                    warn "Could not find API process"
+                    rm -f /tmp/automation-api.pid
                 fi
             else
-                warn "API not running (no PID file)"
+                warn "API not running"
+                rm -f /tmp/automation-api.pid
             fi
             ;;
         status|*)
-            if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
-                echo -e "🔌 API: ${GREEN}Running${NC} (PID: $(cat "$pidfile"))"
+            if is_api_running; then
+                PID=$(cat /tmp/automation-api.pid 2>/dev/null | tr -d '[:space:]')
+                echo -e "🔌 API: ${GREEN}Running${NC} (port 18799)"
+                [ -n "$PID" ] && echo "   PID: $PID"
             else
                 echo -e "🔌 API: ${RED}Stopped${NC}"
             fi
