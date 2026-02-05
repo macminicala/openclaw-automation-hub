@@ -34,24 +34,399 @@
       </div>
     </div>
 
-    <!-- Loading Indicator -->
-    <div class="loading-indicator" id="loading-indicator">
-      <div class="loading-spinner"></div>
-      <p>Loading your automations...</p>
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('automations')">Automations</button>
+      <button class="tab" onclick="switchTab('builder')">Visual Builder</button>
     </div>
 
-    <!-- Main Content -->
-    <main class="main">
-      <div class="automations-grid" id="automations-grid">
-        <!-- Loaded via JS -->
+    <!-- Automations Tab -->
+    <div class="tab-content active" id="tab-automations">
+      <!-- Loading Indicator -->
+      <div class="loading-indicator" id="loading-indicator">
+        <div class="loading-spinner"></div>
+        <p>Loading your automations...</p>
       </div>
-      <div class="empty-state" id="empty-state">
-        <div class="empty-icon">🚀</div>
-        <h3>Get started with automations</h3>
-        <p>Automations help you run tasks automatically on your schedule. Create your first one to save time!</p>
-        <button class="btn btn-primary" onclick="openNewAutomation()">Create Your First Automation</button>
+
+      <!-- Main Content -->
+      <main class="main">
+        <div class="automations-grid" id="automations-grid">
+          <!-- Loaded via JS -->
+        </div>
+        <div class="empty-state" id="empty-state">
+          <div class="empty-icon">🚀</div>
+          <h3>Get started with automations</h3>
+          <p>Automations help you run tasks automatically on your schedule. Create your first one to save time!</p>
+          <button class="btn btn-primary" onclick="switchTab('builder')">Create Your First Automation</button>
+        </div>
+      </main>
+    </div>
+
+    <!-- Visual Workflow Builder Tab -->
+    <div class="tab-content" id="tab-builder">
+      <div class="workflow-builder">
+        <!-- Visual Flow Diagram -->
+        <div class="flow-diagram" id="flow-diagram">
+          <h3>Your Automation Flow</h3>
+          <div class="flow-nodes">
+            <!-- Trigger Node -->
+            <div class="flow-node flow-trigger" id="node-trigger" onclick="configureStep('trigger')">
+              <div class="flow-node-icon" id="trigger-icon">⚡</div>
+              <div class="flow-node-label">TRIGGER</div>
+              <div class="flow-node-value" id="trigger-value">Click to select</div>
+              <div class="flow-node-edit">✏️</div>
+            </div>
+            
+            <div class="flow-connector">
+              <svg width="40" height="20">
+                <path d="M0,10 L30,10 M25,5 L30,10 L25,15" stroke="var(--accent-primary)" stroke-width="2" fill="none"/>
+              </svg>
+            </div>
+            
+            <!-- Condition Node -->
+            <div class="flow-node flow-condition" id="node-condition" onclick="configureStep('condition')">
+              <div class="flow-node-icon" id="condition-icon">🔍</div>
+              <div class="flow-node-label">CONDITION</div>
+              <div class="flow-node-value" id="condition-value">Optional</div>
+              <div class="flow-node-edit">✏️</div>
+            </div>
+            
+            <div class="flow-connector">
+              <svg width="40" height="20">
+                <path d="M0,10 L30,10 M25,5 L30,10 L25,15" stroke="var(--accent-primary)" stroke-width="2" fill="none"/>
+              </svg>
+            </div>
+            
+            <!-- Action Node -->
+            <div class="flow-node flow-action" id="node-action" onclick="configureStep('action')">
+              <div class="flow-node-icon" id="action-icon">🎯</div>
+              <div class="flow-node-label">ACTION</div>
+              <div class="flow-node-value" id="action-value">Click to select</div>
+              <div class="flow-node-edit">✏️</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Configuration Panel -->
+        <div class="config-panel" id="config-panel">
+          <!-- Trigger Configuration -->
+          <div class="config-section" id="config-trigger">
+            <h4>Select Trigger</h4>
+            <div class="config-options">
+              <button class="config-option" data-trigger="schedule" onclick="selectTrigger('schedule')">
+                <span class="option-icon">⏰</span>
+                <span class="option-label">Schedule</span>
+                <span class="option-desc">Run at specific times</span>
+              </button>
+              <button class="config-option" data-trigger="webhook" onclick="selectTrigger('webhook')">
+                <span class="option-icon">🔗</span>
+                <span class="option-label">Webhook</span>
+                <span class="option-desc">HTTP endpoint</span>
+              </button>
+              <button class="config-option" data-trigger="file_change" onclick="selectTrigger('file_change')">
+                <span class="option-icon">📁</span>
+                <span class="option-label">File Watch</span>
+                <span class="option-desc">Monitor file changes</span>
+              </button>
+              <button class="config-option" data-trigger="email" onclick="selectTrigger('email')">
+                <span class="option-icon">📧</span>
+                <span class="option-label">Email</span>
+                <span class="option-desc">Watch inbox</span>
+              </button>
+              <button class="config-option" data-trigger="calendar" onclick="selectTrigger('calendar')">
+                <span class="option-icon">📅</span>
+                <span class="option-label">Calendar</span>
+                <span class="option-desc">Calendar events</span>
+              </button>
+              <button class="config-option" data-trigger="system" onclick="selectTrigger('system')">
+                <span class="option-icon">🖥️</span>
+                <span class="option-label">System</span>
+                <span class="option-desc">Resource monitoring</span>
+              </button>
+            </div>
+            
+            <!-- Trigger Settings -->
+            <div class="trigger-settings" id="trigger-settings">
+              <!-- Schedule Settings -->
+              <div class="trigger-config" data-trigger="schedule" style="display:none">
+                <div class="form-group">
+                  <label>Schedule Preset</label>
+                  <select id="schedule-preset" onchange="updateSchedulePreset()">
+                    <option value="custom">Custom cron expression</option>
+                    <option value="every-hour">Every hour</option>
+                    <option value="every-day-9am" selected>Every day at 9:00 AM</option>
+                    <option value="every-day-6pm">Every day at 6:00 PM</option>
+                    <option value="every-monday">Every Monday at 8:00 AM</option>
+                    <option value="every-tuesday">Every Tuesday at 8:00 AM</option>
+                    <option value="every-wednesday">Every Wednesday at 8:00 AM</option>
+                    <option value="every-thursday">Every Thursday at 8:00 AM</option>
+                    <option value="every-friday">Every Friday at 8:00 AM</option>
+                    <option value="every-weekday">Every weekday at 9:00 AM</option>
+                    <option value="every-month">First day of every month at 9:00 AM</option>
+                    <option value="every-minute">Every minute (testing)</option>
+                  </select>
+                </div>
+                <div class="form-group" id="cron-group">
+                  <label>Cron Expression</label>
+                  <input type="text" id="cron" placeholder="0 9 * * *" value="0 9 * * *">
+                  <small>Format: minute hour day month weekday</small>
+                </div>
+                <div class="cron-preview" id="cron-preview">Runs: Every day at 9:00 AM</div>
+              </div>
+              
+              <!-- Webhook Settings -->
+              <div class="trigger-config" data-trigger="webhook" style="display:none">
+                <div class="form-group">
+                  <label>Port</label>
+                  <input type="number" id="webhook-port" value="18800">
+                </div>
+                <div class="form-group">
+                  <label>Endpoint</label>
+                  <input type="text" id="webhook-endpoint" value="/my-automation">
+                </div>
+              </div>
+              
+              <!-- File Watch Settings -->
+              <div class="trigger-config" data-trigger="file_change" style="display:none">
+                <div class="form-group">
+                  <label>Path to Watch</label>
+                  <input type="text" id="watch-path" value="~/">
+                </div>
+                <div class="form-group">
+                  <label>Events</label>
+                  <div class="checkbox-group">
+                    <label><input type="checkbox" id="event-modify" checked> Modify</label>
+                    <label><input type="checkbox" id="event-add" checked> Add</label>
+                    <label><input type="checkbox" id="event-delete"> Delete</label>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Email Settings -->
+              <div class="trigger-config" data-trigger="email" style="display:none">
+                <div class="form-group">
+                  <label>IMAP Host</label>
+                  <input type="text" id="email-host" value="imap.gmail.com">
+                </div>
+                <div class="form-group">
+                  <label>Email</label>
+                  <input type="email" id="email-user" placeholder="your@email.com">
+                </div>
+                <div class="form-group">
+                  <label>Check Interval (seconds)</label>
+                  <input type="number" id="email-interval" value="60">
+                </div>
+              </div>
+              
+              <!-- Calendar Settings -->
+              <div class="trigger-config" data-trigger="calendar" style="display:none">
+                <div class="form-group">
+                  <label>Provider</label>
+                  <select id="calendar-provider">
+                    <option value="google">Google Calendar</option>
+                    <option value="apple">Apple Calendar</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Check Interval (minutes)</label>
+                  <input type="number" id="calendar-interval" value="5">
+                </div>
+              </div>
+              
+              <!-- System Settings -->
+              <div class="trigger-config" data-trigger="system" style="display:none">
+                <div class="form-group">
+                  <label>CPU Threshold (%)</label>
+                  <input type="number" id="sys-cpu" value="90">
+                </div>
+                <div class="form-group">
+                  <label>Memory Threshold (%)</label>
+                  <input type="number" id="sys-mem" value="90">
+                </div>
+                <div class="form-group">
+                  <label>Disk Threshold (%)</label>
+                  <input type="number" id="sys-disk" value="95">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Condition Configuration -->
+          <div class="config-section" id="config-condition" style="display:none">
+            <h4>Condition (Optional)</h4>
+            <p class="config-desc">Add a filter to only run when certain conditions are met</p>
+            <div class="condition-buttons">
+              <button class="btn btn-secondary" onclick="addCondition()">+ Add Condition</button>
+              <button class="btn btn-secondary" onclick="skipCondition()">Skip Condition</button>
+            </div>
+            
+            <!-- Condition Settings -->
+            <div class="condition-settings" id="condition-settings" style="display:none">
+              <div class="form-group">
+                <label>Condition Type</label>
+                <select id="condition-type" onchange="updateConditionFields()">
+                  <option value="keyword">🔑 Keyword</option>
+                  <option value="time_range">⏰ Time Range</option>
+                  <option value="sender">👤 Sender</option>
+                  <option value="file_pattern">📄 File Pattern</option>
+                </select>
+              </div>
+              
+              <!-- Keyword Condition -->
+              <div class="condition-config" data-condition="keyword" style="display:none">
+                <div class="form-group">
+                  <label>Keyword to Match</label>
+                  <input type="text" id="keyword-value" placeholder="e.g., important, urgent">
+                </div>
+              </div>
+              
+              <!-- Time Range Condition -->
+              <div class="condition-config" data-condition="time_range" style="display:none">
+                <div class="form-group">
+                  <label>Start Time</label>
+                  <input type="time" id="time-start" value="09:00">
+                </div>
+                <div class="form-group">
+                  <label>End Time</label>
+                  <input type="time" id="time-end" value="18:00">
+                </div>
+              </div>
+              
+              <!-- Sender Condition -->
+              <div class="condition-config" data-condition="sender" style="display:none">
+                <div class="form-group">
+                  <label>Sender Email</label>
+                  <input type="email" id="sender-value" placeholder="sender@example.com">
+                </div>
+              </div>
+              
+              <!-- File Pattern Condition -->
+              <div class="condition-config" data-condition="file_pattern" style="display:none">
+                <div class="form-group">
+                  <label>File Pattern</label>
+                  <input type="text" id="file-pattern" placeholder="*.txt, *.md">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Configuration -->
+          <div class="config-section" id="config-action">
+            <h4>Select Action</h4>
+            <div class="config-options">
+              <button class="config-option" data-action="shell" onclick="selectAction('shell')">
+                <span class="option-icon">💻</span>
+                <span class="option-label">Shell Command</span>
+                <span class="option-desc">Run terminal commands</span>
+              </button>
+              <button class="config-option" data-action="agent" onclick="selectAction('agent')">
+                <span class="option-icon">🤖</span>
+                <span class="option-label">AI Agent</span>
+                <span class="option-desc">Run AI tasks</span>
+              </button>
+              <button class="config-option" data-action="git" onclick="selectAction('git')">
+                <span class="option-icon">🔀</span>
+                <span class="option-label">Git</span>
+                <span class="option-desc">Auto-commit & push</span>
+              </button>
+              <button class="config-option" data-action="notify" onclick="selectAction('notify')">
+                <span class="option-icon">📱</span>
+                <span class="option-label">Notify</span>
+                <span class="option-desc">Send notifications</span>
+              </button>
+              <button class="config-option" data-action="email_reply" onclick="selectAction('email_reply')">
+                <span class="option-icon">📧</span>
+                <span class="option-label">Email Reply</span>
+                <span class="option-desc">Auto-reply to emails</span>
+              </button>
+            </div>
+            
+            <!-- Action Settings -->
+            <div class="action-settings" id="action-settings">
+              <!-- Shell Action -->
+              <div class="action-config" data-action="shell" style="display:none">
+                <div class="form-group">
+                  <label>Command</label>
+                  <input type="text" id="shell-command" placeholder="echo 'Done'">
+                </div>
+              </div>
+              
+              <!-- Agent Action -->
+              <div class="action-config" data-action="agent" style="display:none">
+                <div class="form-group">
+                  <label>Task Description</label>
+                  <textarea id="agent-prompt" rows="3" placeholder="What should the AI do?"></textarea>
+                </div>
+                <div class="form-group">
+                  <label>Model</label>
+                  <select id="agent-model">
+                    <option value="claude-opus-4-5">Claude Opus 4</option>
+                    <option value="claude-sonnet-4">Claude Sonnet 4</option>
+                    <option value="gpt-4">GPT-4</option>
+                  </select>
+                </div>
+              </div>
+              
+              <!-- Git Action -->
+              <div class="action-config" data-action="git" style="display:none">
+                <div class="form-group">
+                  <label>Repository Path</label>
+                  <input type="text" id="git-path" placeholder="~/Projects/my-repo">
+                </div>
+                <div class="checkbox-group">
+                  <label><input type="checkbox" id="git-add" checked> git add .</label>
+                  <label><input type="checkbox" id="git-commit" checked> Auto-commit</label>
+                  <label><input type="checkbox" id="git-push" checked> Auto-push</label>
+                </div>
+              </div>
+              
+              <!-- Notify Action -->
+              <div class="action-config" data-action="notify" style="display:none">
+                <div class="form-group">
+                  <label>Channel</label>
+                  <select id="notify-channel">
+                    <option value="telegram">Telegram</option>
+                    <option value="slack">Slack</option>
+                    <option value="discord">Discord</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Message</label>
+                  <textarea id="notify-message" rows="2" placeholder="Your notification message"></textarea>
+                </div>
+              </div>
+              
+              <!-- Email Reply Action -->
+              <div class="action-config" data-action="email_reply" style="display:none">
+                <div class="form-group">
+                  <label>Subject</label>
+                  <input type="text" id="email-subject" placeholder="Re: Your email">
+                </div>
+                <div class="form-group">
+                  <label>Body</label>
+                  <textarea id="email-body" rows="3" placeholder="Your auto-reply message"></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Save Button -->
+          <div class="builder-actions">
+            <button class="btn btn-primary btn-large" onclick="saveWorkflowAutomation()">
+              ✓ Create Automation
+            </button>
+          </div>
+        </div>
+
+        <!-- Real-time Preview -->
+        <div class="flow-preview" id="flow-preview">
+          <h4>📋 Preview</h4>
+          <div class="preview-content" id="preview-content">
+            <p class="preview-empty">Configure your automation to see the preview</p>
+          </div>
+        </div>
       </div>
-    </main>
+    </div>
 
     <!-- Activity Feed -->
     <section class="logs-section">

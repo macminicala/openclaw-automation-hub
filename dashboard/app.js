@@ -16,12 +16,413 @@ const SCHEDULE_PRESETS = {
   'every-month': { cron: '0 9 1 * *', desc: 'Runs on the 1st day of every month at 9:00 AM' }
 };
 
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-  loadAutomations();
-  setupEventListeners();
-  logActivity('Ready! Create your first automation.', 'info');
-});
+// Current workflow state
+let workflowState = {
+  trigger: null,
+  condition: null,
+  action: null,
+  activeStep: null
+};
+
+// Tab switching
+function switchTab(tabName) {
+  document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+  
+  const tab = document.querySelector(`.tab[onclick="switchTab('${tabName}')"]`);
+  const content = document.getElementById(`tab-${tabName}`);
+  
+  if (tab) tab.classList.add('active');
+  if (content) content.classList.add('active');
+}
+
+// Configure step - click on node to configure
+function configureStep(step) {
+  // Remove active state from all nodes
+  document.querySelectorAll('.flow-node').forEach(node => {
+    node.classList.remove('active', 'flow-trigger-active', 'flow-condition-active', 'flow-action-active');
+  });
+  
+  // Set active state for clicked node
+  const node = document.getElementById(`node-${step}`);
+  if (node) {
+    node.classList.add('active', `flow-${step}-active`);
+  }
+  
+  workflowState.activeStep = step;
+  
+  // Show appropriate config section
+  document.querySelectorAll('.config-section').forEach(section => {
+    section.style.display = 'none';
+  });
+  
+  const configSection = document.getElementById(`config-${step}`);
+  if (configSection) {
+    configSection.style.display = 'block';
+  }
+  
+  updatePreview();
+}
+
+// Select trigger type
+function selectTrigger(triggerType) {
+  workflowState.trigger = triggerType;
+  
+  // Update node display
+  const node = document.getElementById('node-trigger');
+  const value = document.getElementById('trigger-value');
+  const icon = document.getElementById('trigger-icon');
+  
+  const triggerLabels = {
+    schedule: '⏰ Schedule',
+    webhook: '🔗 Webhook',
+    file_change: '📁 File Watch',
+    email: '📧 Email',
+    calendar: '📅 Calendar',
+    system: '🖥️ System'
+  };
+  
+  value.textContent = triggerLabels[triggerType] || triggerType;
+  node.classList.add('configured');
+  
+  // Highlight selected option
+  document.querySelectorAll('[data-trigger]').forEach(btn => {
+    btn.classList.remove('selected');
+  });
+  document.querySelector(`[data-trigger="${triggerType}"]`)?.classList.add('selected');
+  
+  // Show trigger-specific settings
+  document.querySelectorAll('.trigger-config').forEach(config => {
+    config.style.display = 'none';
+  });
+  document.querySelector(`.trigger-config[data-trigger="${triggerType}"]`)?.style.setProperty('display', 'block', 'important');
+  
+  updatePreview();
+}
+
+// Select action type
+function selectAction(actionType) {
+  workflowState.action = actionType;
+  
+  // Update node display
+  const node = document.getElementById('node-action');
+  const value = document.getElementById('action-value');
+  const icon = document.getElementById('action-icon');
+  
+  const actionLabels = {
+    shell: '💻 Shell Command',
+    agent: '🤖 AI Agent',
+    git: '🔀 Git',
+    notify: '📱 Notify',
+    email_reply: '📧 Email Reply'
+  };
+  
+  value.textContent = actionLabels[actionType] || actionType;
+  node.classList.add('configured');
+  
+  // Highlight selected option
+  document.querySelectorAll('[data-action]').forEach(btn => {
+    btn.classList.remove('selected');
+  });
+  document.querySelector(`[data-action="${actionType}"]`)?.classList.add('selected');
+  
+  // Show action-specific settings
+  document.querySelectorAll('.action-config').forEach(config => {
+    config.style.display = 'none';
+  });
+  document.querySelector(`.action-config[data-action="${actionType}"]`)?.style.setProperty('display', 'block', 'important');
+  
+  updatePreview();
+}
+
+// Add condition
+function addCondition() {
+  workflowState.condition = 'active';
+  
+  const node = document.getElementById('node-condition');
+  const value = document.getElementById('condition-value');
+  
+  value.textContent = '🔑 Keyword';
+  node.classList.add('configured');
+  
+  document.getElementById('condition-settings').style.display = 'block';
+  document.querySelector('.condition-buttons').style.display = 'none';
+  
+  updateConditionFields();
+  updatePreview();
+}
+
+// Skip condition
+function skipCondition() {
+  workflowState.condition = null;
+  
+  const node = document.getElementById('node-condition');
+  const value = document.getElementById('condition-value');
+  
+  value.textContent = 'Skipped';
+  node.classList.add('skipped');
+  
+  // Hide condition config
+  document.getElementById('config-condition').style.display = 'none';
+  
+  updatePreview();
+}
+
+// Update condition fields based on type
+function updateConditionFields() {
+  const type = document.getElementById('condition-type').value;
+  
+  workflowState.condition = type;
+  
+  const conditionLabels = {
+    keyword: '🔑 Keyword',
+    time_range: '⏰ Time Range',
+    sender: '👤 Sender',
+    file_pattern: '📄 File Pattern'
+  };
+  
+  document.getElementById('condition-value').textContent = conditionLabels[type];
+  
+  document.querySelectorAll('.condition-config').forEach(config => {
+    config.style.display = 'none';
+  });
+  document.querySelector(`.condition-config[data-condition="${type}"]`)?.style.setProperty('display', 'block', 'important');
+  
+  updatePreview();
+}
+
+// Update schedule preset
+function updateSchedulePreset() {
+  const preset = document.getElementById('schedule-preset').value;
+  const cronInput = document.getElementById('cron');
+  const preview = document.getElementById('cron-preview');
+  
+  if (preset === 'custom') {
+    cronInput.value = '';
+    preview.textContent = 'Enter a cron expression';
+  } else if (SCHEDULE_PRESETS[preset]) {
+    cronInput.value = SCHEDULE_PRESETS[preset].cron;
+    preview.textContent = `Runs: ${SCHEDULE_PRESETS[preset].desc}`;
+  }
+  
+  cronInput.addEventListener('input', updatePreview);
+  updatePreview();
+}
+
+// Update preview panel
+function updatePreview() {
+  const preview = document.getElementById('preview-content');
+  let html = '';
+  
+  if (workflowState.trigger) {
+    const triggerLabels = {
+      schedule: '⏰ Schedule',
+      webhook: '🔗 Webhook',
+      file_change: '📁 File Watch',
+      email: '📧 Email',
+      calendar: '📅 Calendar',
+      system: '🖥️ System'
+    };
+    html += `<div class="preview-item preview-trigger">⚡ ${triggerLabels[workflowState.trigger] || workflowState.trigger}</div>`;
+  }
+  
+  if (workflowState.condition && workflowState.condition !== 'skipped') {
+    const conditionLabels = {
+      keyword: '🔑 Keyword',
+      time_range: '⏰ Time Range',
+      sender: '👤 Sender',
+      file_pattern: '📄 File Pattern'
+    };
+    html += `<div class="preview-item preview-condition">→ ${conditionLabels[workflowState.condition] || workflowState.condition}</div>`;
+  }
+  
+  if (workflowState.action) {
+    const actionLabels = {
+      shell: '💻 Shell Command',
+      agent: '🤖 AI Agent',
+      git: '🔀 Git',
+      notify: '📱 Notify',
+      email_reply: '📧 Email Reply'
+    };
+    html += `<div class="preview-item preview-action">🎯 ${actionLabels[workflowState.action] || workflowState.action}</div>`;
+  }
+  
+  if (!html) {
+    html = '<p class="preview-empty">Configure your automation to see the preview</p>';
+  }
+  
+  preview.innerHTML = html;
+}
+
+// Save workflow automation
+async function saveWorkflowAutomation() {
+  // Validate trigger
+  if (!workflowState.trigger) {
+    showToast('Please select a trigger', 'error');
+    configureStep('trigger');
+    return;
+  }
+  
+  // Validate action
+  if (!workflowState.action) {
+    showToast('Please select an action', 'error');
+    configureStep('action');
+    return;
+  }
+  
+  // Build automation object
+  const automation = {
+    id: generateId('automation'),
+    name: `${workflowState.trigger} → ${workflowState.action}`,
+    enabled: true,
+    trigger: {
+      type: workflowState.trigger
+    },
+    actions: []
+  };
+  
+  // Add trigger-specific settings
+  switch (workflowState.trigger) {
+    case 'schedule':
+      automation.trigger.cron = document.getElementById('cron').value || '0 9 * * *';
+      break;
+    case 'webhook':
+      automation.trigger.port = parseInt(document.getElementById('webhook-port').value) || 18800;
+      automation.trigger.endpoint = document.getElementById('webhook-endpoint').value;
+      break;
+    case 'file_change':
+      automation.trigger.path = document.getElementById('watch-path').value;
+      automation.trigger.events = [];
+      if (document.getElementById('event-modify').checked) automation.trigger.events.push('modify');
+      if (document.getElementById('event-add').checked) automation.trigger.events.push('add');
+      if (document.getElementById('event-delete').checked) automation.trigger.events.push('delete');
+      break;
+    case 'email':
+      automation.trigger.host = document.getElementById('email-host').value;
+      automation.trigger.user = document.getElementById('email-user').value;
+      automation.trigger.interval = parseInt(document.getElementById('email-interval').value) || 60;
+      break;
+    case 'calendar':
+      automation.trigger.provider = document.getElementById('calendar-provider').value;
+      automation.trigger.interval = parseInt(document.getElementById('calendar-interval').value) || 5;
+      break;
+    case 'system':
+      automation.trigger.cpuThreshold = parseInt(document.getElementById('sys-cpu').value) || 90;
+      automation.trigger.memoryThreshold = parseInt(document.getElementById('sys-mem').value) || 90;
+      automation.trigger.diskThreshold = parseInt(document.getElementById('sys-disk').value) || 95;
+      break;
+  }
+  
+  // Add action
+  switch (workflowState.action) {
+    case 'shell':
+      const command = document.getElementById('shell-command').value.trim();
+      if (!command) {
+        showToast('Please enter a command', 'error');
+        return;
+      }
+      automation.actions.push({ type: 'shell', command: command });
+      break;
+    case 'agent':
+      const prompt = document.getElementById('agent-prompt').value.trim();
+      if (!prompt) {
+        showToast('Please enter a task description', 'error');
+        return;
+      }
+      automation.actions.push({ type: 'agent', prompt: prompt, model: document.getElementById('agent-model').value });
+      break;
+    case 'git':
+      const path = document.getElementById('git-path').value.trim();
+      if (!path) {
+        showToast('Please enter a repository path', 'error');
+        return;
+      }
+      automation.actions.push({
+        type: 'git',
+        path: path,
+        add: document.getElementById('git-add').checked,
+        commit: document.getElementById('git-commit').checked,
+        push: document.getElementById('git-push').checked
+      });
+      break;
+    case 'notify':
+      const message = document.getElementById('notify-message').value.trim();
+      if (!message) {
+        showToast('Please enter a notification message', 'error');
+        return;
+      }
+      automation.actions.push({ type: 'notify', channel: document.getElementById('notify-channel').value, message: message });
+      break;
+    case 'email_reply':
+      const subject = document.getElementById('email-subject').value.trim();
+      const body = document.getElementById('email-body').value.trim();
+      if (!subject || !body) {
+        showToast('Please fill in email subject and body', 'error');
+        return;
+      }
+      automation.actions.push({ type: 'email', subject: subject, body: body });
+      break;
+  }
+  
+  try {
+    await saveAutomation(automation);
+    
+    // Reset workflow state
+    resetWorkflow();
+    switchTab('automations');
+  } catch (error) {
+    showToast('Failed to save automation', 'error');
+  }
+}
+
+// Reset workflow builder
+function resetWorkflow() {
+  workflowState = {
+    trigger: null,
+    condition: null,
+    action: null,
+    activeStep: null
+  };
+  
+  // Reset nodes
+  ['trigger', 'condition', 'action'].forEach(step => {
+    const node = document.getElementById(`node-${step}`);
+    const value = document.getElementById(`${step}-value`);
+    
+    node.classList.remove('active', 'configured', 'skipped');
+    node.classList.remove(`flow-${step}-active`);
+    
+    if (step === 'trigger') value.textContent = 'Click to select';
+    else if (step === 'condition') value.textContent = 'Optional';
+    else value.textContent = 'Click to select';
+  });
+  
+  // Reset config sections
+  document.querySelectorAll('.config-section').forEach(section => {
+    section.style.display = 'none';
+  });
+  document.getElementById('config-trigger').style.display = 'block';
+  
+  // Reset selected options
+  document.querySelectorAll('.selected').forEach(el => el.classList.remove('selected'));
+  
+  // Reset trigger/action configs
+  document.querySelectorAll('.trigger-config, .action-config, .condition-config').forEach(config => {
+    config.style.display = 'none';
+  });
+  
+  // Reset condition buttons
+  document.querySelector('.condition-buttons').style.display = 'flex';
+  document.getElementById('condition-settings').style.display = 'none';
+  
+  // Reset form inputs
+  document.getElementById('schedule-preset').value = 'every-day-9am';
+  document.getElementById('cron').value = '0 9 * * *';
+  document.getElementById('cron-preview').textContent = 'Runs: Every day at 9:00 AM';
+  
+  // Reset preview
+  updatePreview();
+}
 
 // ============ API FUNCTIONS ============
 
