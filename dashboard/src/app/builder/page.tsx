@@ -15,7 +15,9 @@ import {
   Panel,
   MarkerType,
   Handle,
-  Position
+  Position,
+  useNodesState,
+  useEdgesState
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 import { Button } from "@/components/ui/button"
@@ -77,7 +79,6 @@ const DAYS_OF_MONTH = Array.from({ length: 28 }, (_, i) => ({
   label: `${i + 1}`
 }))
 
-// Custom Trigger Node Component
 function TriggerNode({ data, isConnectable }: any) {
   const colors: Record<string, string> = {
     schedule: "bg-blue-500 border-blue-600",
@@ -90,13 +91,13 @@ function TriggerNode({ data, isConnectable }: any) {
   const colorClass = colors[data.type as string] || "bg-blue-500 border-blue-600"
 
   return (
-    <div className={`${colorClass} rounded-lg p-3 min-w-[140px] shadow-lg text-white`}>
+    <div className={`${colorClass} rounded-lg p-3 min-w-[140px] shadow-lg text-white cursor-move`}>
       <Handle type="target" position={Position.Left} isConnectable={isConnectable} className="w-3 h-3 bg-white" />
       <div className="flex items-center gap-2">
         <Zap className="w-5 h-5" />
         <div>
           <div className="text-sm font-bold">{data.label as string}</div>
-          <div className="text-xs opacity-80">{data.sublabel as string}</div>
+          <div className="text-xs opacity-80">{data.sublabel as string || data.type}</div>
         </div>
       </div>
       <Handle type="source" position={Position.Right} isConnectable={isConnectable} className="w-3 h-3 bg-white" />
@@ -104,7 +105,6 @@ function TriggerNode({ data, isConnectable }: any) {
   )
 }
 
-// Custom Action Node Component  
 function ActionNode({ data, isConnectable }: any) {
   const colors: Record<string, string> = {
     shell: "bg-orange-500 border-orange-600",
@@ -116,13 +116,13 @@ function ActionNode({ data, isConnectable }: any) {
   const colorClass = colors[data.type as string] || "bg-orange-500 border-orange-600"
 
   return (
-    <div className={`${colorClass} rounded-lg p-3 min-w-[140px] shadow-lg text-white`}>
+    <div className={`${colorClass} rounded-lg p-3 min-w-[140px] shadow-lg text-white cursor-move`}>
       <Handle type="target" position={Position.Left} isConnectable={isConnectable} className="w-3 h-3 bg-white" />
       <div className="flex items-center gap-2">
         <Settings className="w-5 h-5" />
         <div>
           <div className="text-sm font-bold">{data.label as string}</div>
-          <div className="text-xs opacity-80">{data.sublabel as string}</div>
+          <div className="text-xs opacity-80">{data.sublabel as string || data.type}</div>
         </div>
       </div>
       <Handle type="source" position={Position.Right} isConnectable={isConnectable} className="w-3 h-3 bg-white" />
@@ -139,6 +139,7 @@ function BuilderContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { screenToFlowPosition } = useReactFlow()
+  
   const [nodes, setNodes] = useState<Node[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
   const [automationName, setAutomationName] = useState("")
@@ -174,7 +175,6 @@ function BuilderContent() {
           data: { 
             type: data.trigger?.type || "schedule",
             label: triggerLabels[data.trigger?.type] || "Trigger",
-            sublabel: getSublabel(data.trigger),
             ...data.trigger
           },
         }
@@ -186,7 +186,6 @@ function BuilderContent() {
           data: { 
             type: data.actions?.[0]?.type || "shell",
             label: actionLabels[data.actions?.[0]?.type] || "Action",
-            sublabel: getActionSublabel(data.actions?.[0]),
             ...data.actions?.[0]
           },
         }
@@ -202,23 +201,9 @@ function BuilderContent() {
         }])
       }
     } catch (error) {
+      console.error("Error loading:", error)
       toast.error("Errore nel caricamento")
     }
-  }
-
-  const getSublabel = (trigger: any): string => {
-    if (!trigger) return "Trigger"
-    if (trigger.cron) return `Cron: ${trigger.cron}`
-    if (trigger.endpoint) return `Endpoint: ${trigger.endpoint}`
-    if (trigger.path) return `Path: ${trigger.path}`
-    return "Trigger"
-  }
-
-  const getActionSublabel = (action: any): string => {
-    if (!action) return "Action"
-    if (action.command) return action.command.substring(0, 20) + "..."
-    if (action.agent) return `Agent: ${action.agent}`
-    return "Action"
   }
 
   const generateCronFromSchedule = () => {
@@ -259,7 +244,6 @@ function BuilderContent() {
         data: { 
           type: defaultType,
           label: labels[defaultType],
-          sublabel: itemType === "trigger" ? "Trigger" : "Action"
         },
       }
 
@@ -331,8 +315,8 @@ function BuilderContent() {
       dayOfWeek: scheduleDayOfWeek, dayOfMonth: scheduleDayOfMonth 
     }
     
-    setNodes((nds) => nds.map((n) => n.id === selectedNode.id ? { ...n, data: { ...n.data, ...config, sublabel: `Cron: ${cron}` } } : n))
-    setSelectedNode({ ...selectedNode, data: { ...selectedNode.data, ...config, sublabel: `Cron: ${cron}` } })
+    setNodes((nds) => nds.map((n) => n.id === selectedNode.id ? { ...n, data: { ...n.data, ...config } } : n))
+    setSelectedNode({ ...selectedNode, data: { ...selectedNode.data, ...config } })
     setTempConfig(config)
     toast.success("Configurazione applicata")
   }
@@ -357,8 +341,13 @@ function BuilderContent() {
     const triggerNode = nodes.find((n) => n.type === "trigger")
     const actionNode = nodes.find((n) => n.type === "action")
 
-    if (!triggerNode || !actionNode || edges.length === 0) {
-      toast.error("Completa il workflow")
+    if (!triggerNode || !actionNode) {
+      toast.error("Aggiungi Trigger e Azione")
+      return
+    }
+
+    if (edges.length === 0) {
+      toast.error("Connetti Trigger e Azione")
       return
     }
 
@@ -368,13 +357,13 @@ function BuilderContent() {
       const actionConfig: Record<string, string> = {}
 
       Object.entries(triggerNode.data).forEach(([key, value]) => {
-        if (!["type", "label", "sublabel"].includes(key)) {
+        if (!["type", "label"].includes(key)) {
           triggerConfig[key] = value as string
         }
       })
 
       Object.entries(actionNode.data).forEach(([key, value]) => {
-        if (!["type", "label", "sublabel"].includes(key)) {
+        if (!["type", "label"].includes(key)) {
           actionConfig[key] = value as string
         }
       })
@@ -397,9 +386,11 @@ function BuilderContent() {
         toast.success(automationId ? "Automazione aggiornata" : "Automazione creata")
         router.push("/")
       } else {
-        toast.error("Errore nel salvataggio")
+        const error = await response.json()
+        toast.error(error.error || "Errore nel salvataggio")
       }
     } catch (error) {
+      console.error("Save error:", error)
       toast.error("Errore nel salvataggio")
     } finally {
       setIsSaving(false)
@@ -412,12 +403,8 @@ function BuilderContent() {
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          onNodesChange={(changes) => {
-      // React Flow handles node dragging automatically
-    }}
-          onEdgesChange={(changes) => {
-      // React Flow handles edge changes automatically
-    }}
+          onNodesChange={() => {}}
+          onEdgesChange={() => {}}
           onConnect={onConnect}
           onNodeClick={onNodeClick}
           onPaneClick={onPaneClick}
@@ -500,9 +487,9 @@ function BuilderContent() {
           <ol className="space-y-1 list-decimal list-inside text-muted-foreground">
             <li>Trascina un Trigger</li>
             <li>Trascina un'Azione</li>
-            <li>Connettili (drag dal punto blu)</li>
-            <li>Clicca i nodi per configurare</li>
-            <li>Trascina i nodi per posizionarli</li>
+            <li>Trascina i nodi dove vuoi</li>
+            <li>Connetti (drag dal punto blu)</li>
+            <li>Clicca per configurare</li>
             <li>Salva</li>
           </ol>
         </div>
