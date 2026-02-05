@@ -9,6 +9,7 @@
   },
   "scripts": {
     "start": "node src/engine.js",
+    "api": "node api-server.js",
     "cli": "node cli/main.js",
     "dashboard": "cd dashboard && npm run dev",
     "dashboard:build": "cd dashboard && npm run build",

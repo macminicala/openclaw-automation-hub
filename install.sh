@@ -130,13 +130,26 @@ cmd_list() {
 
 cmd_dashboard() {
     check_skill_dir
-    log "Starting Dashboard..."
+    log "Starting API Server (port 18799)..."
+    cd "$SKILL_DIR"
+    node api-server.js &
+    API_PID=$!
+    sleep 1
+    
+    log "Starting Next.js Dashboard (port 3000)..."
+    cd "$SKILL_DIR/dashboard"
+    npm run dev &
+    DASH_PID=$!
+    
     echo ""
     echo -e "${GREEN}🌐 Dashboard: http://localhost:3000${NC}"
-    echo -e "${YELLOW}💡 API: http://localhost:18799${NC}"
+    echo -e "${YELLOW}🔌 API:       http://localhost:18799${NC}"
     echo ""
-    cd "$SKILL_DIR/dashboard"
-    npm run dev
+    echo "Press Ctrl+C to stop all servers"
+    
+    # Wait for Ctrl+C
+    trap "kill $API_PID $DASH_PID 2>/dev/null; exit" INT
+    wait
 }
 
 cmd_status() {
