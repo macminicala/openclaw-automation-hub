@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { Toaster } from "@/components/ui/sonner"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus } from "lucide-react"
 import { toast } from "sonner"
 import { Header } from "@/components/header"
@@ -17,7 +16,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [showBuilder, setShowBuilder] = useState(false)
   const [editingAutomation, setEditingAutomation] = useState<Automation | undefined>()
-  const [activeTab, setActiveTab] = useState("automations")
 
   const stats = {
     total: automations.length,
@@ -34,14 +32,12 @@ export default function Dashboard() {
       const response = await fetch(`${API_URL}/automations`)
       if (response.ok) {
         const data = await response.json()
-        // API returns { automations: {...}, stats: {...} } - convert to array
         const automationsList = data.automations ? Object.values(data.automations) : []
-        // Mappa i dati dell'API al formato del frontend
         const mapped: Automation[] = automationsList.map((auto: any) => ({
           id: auto.id,
           name: auto.name,
-          trigger: auto.trigger.type,
-          triggerLabel: getTriggerLabel(auto.trigger.type),
+          trigger: auto.trigger?.type || auto.trigger || 'unknown',
+          triggerLabel: getTriggerLabel(auto.trigger?.type || auto.trigger || 'unknown'),
           action: auto.actions?.[0]?.type || 'unknown',
           actionLabel: getActionLabel(auto.actions?.[0]?.type || 'unknown'),
           enabled: auto.enabled,
@@ -83,7 +79,7 @@ export default function Dashboard() {
 
   const handleToggle = async (id: string, enabled: boolean) => {
     try {
-      const response = await fetch(`${API_URL}/automations/${id}/toggle`, {
+      const response = await fetch(`${API_URL}/automations/${id}/${enabled ? 'enable' : 'disable'}`, {
         method: "POST",
       })
       if (response.ok) {
@@ -126,8 +122,8 @@ export default function Dashboard() {
     try {
       const body = {
         name: data.name,
-        trigger: { type: data.trigger, config: {} },
-        action: { type: data.action, config: data.config },
+        trigger: { type: data.trigger, ...data.config },
+        action: { type: data.action, ...data.config },
         enabled: data.enabled,
       }
 
@@ -164,41 +160,24 @@ export default function Dashboard() {
       <Header stats={stats} />
 
       <main className="container mx-auto px-6 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <div className="flex items-center justify-between mb-6">
-            <TabsList>
-              <TabsTrigger value="automations">Automazioni</TabsTrigger>
-              <TabsTrigger
-                value="new"
-                onClick={() => {
-                  setEditingAutomation(undefined)
-                  setShowBuilder(true)
-                }}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Nuova Automazione
-              </TabsTrigger>
-            </TabsList>
-          </div>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-3xl font-bold">Automazioni</h1>
+          <Button onClick={() => {
+            setEditingAutomation(undefined)
+            setShowBuilder(true)
+          }}>
+            <Plus className="mr-2 h-4 w-4" />
+            Crea Automazione
+          </Button>
+        </div>
 
-          <TabsContent value="automations">
-            <AutomationsList
-              automations={automations}
-              onToggle={handleToggle}
-              onDelete={handleDelete}
-              onEdit={handleEdit}
-            />
-          </TabsContent>
-
-          <TabsContent value="new">
-            <AutomationsList
-              automations={automations}
-              onToggle={handleToggle}
-              onDelete={handleDelete}
-              onEdit={handleEdit}
-            />
-          </TabsContent>
-        </Tabs>
+        <AutomationsList
+          automations={automations}
+          onToggle={handleToggle}
+          onDelete={handleDelete}
+          onEdit={handleEdit}
+          onCreate={() => setShowBuilder(true)}
+        />
       </main>
 
       {showBuilder && (
@@ -211,7 +190,7 @@ export default function Dashboard() {
                   trigger: editingAutomation.trigger,
                   action: editingAutomation.action,
                   enabled: editingAutomation.enabled,
-                  config: {}, // L'API non restituisce config nel listato
+                  config: {},
                 }
               : undefined
           }

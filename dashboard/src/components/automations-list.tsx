@@ -29,6 +29,7 @@ interface AutomationsListProps {
   onToggle: (id: string, enabled: boolean) => void
   onDelete: (id: string) => void
   onEdit: (automation: Automation) => void
+  onCreate: () => void
 }
 
 const triggerIcons: Record<string, React.ReactNode> = {
@@ -45,6 +46,7 @@ export function AutomationsList({
   onToggle,
   onDelete,
   onEdit,
+  onCreate,
 }: AutomationsListProps) {
   if (automations.length === 0) {
     return (
@@ -55,7 +57,10 @@ export function AutomationsList({
           <p className="text-sm text-muted-foreground mb-4">
             Crea la tua prima automazione per iniziare
           </p>
-          <Button>Crea Automazione</Button>
+          <Button onClick={onCreate}>
+            <Zap className="h-4 w-4 mr-2" />
+            Crea Automazione
+          </Button>
         </CardContent>
       </Card>
     )
