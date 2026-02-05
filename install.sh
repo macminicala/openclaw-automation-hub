@@ -136,7 +136,7 @@ cmd_list() {
 
 cmd_dashboard() {
     check_skill_dir
-    local action="${2:-status}"
+    local action="${1:-status}"
 
     case "$action" in
         start)
@@ -187,7 +187,7 @@ cmd_dashboard() {
 
 cmd_api() {
     check_skill_dir
-    local action="${2:-status}"
+    local action="${1:-status}"
 
     case "$action" in
         start)
