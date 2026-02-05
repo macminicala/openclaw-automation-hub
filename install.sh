@@ -91,18 +91,17 @@ show_help() {
     echo ""
     echo -e "${MAGENTA}⚡ Automation Hub CLI${NC}"
     echo ""
-    echo "Usage: automationhub <command>"
+    echo "Usage: automationhub <command> [subcommand]"
     echo ""
     echo "Commands:"
-    echo "  install      Install/update Automation Hub"
-    echo "  test         Run tests"
-    echo "  list         List automations"
-    echo "  enable <id>  Enable automation"
-    echo "  disable <id> Disable automation"
-    echo "  test <id>    Test automation"
-    echo "  dashboard    Start dashboard"
-    echo "  status       Show status"
-    echo "  help         Show help"
+    echo "  install              Install/update Automation Hub"
+    echo "  start                Start API + Dashboard"
+    echo "  stop                 Stop all servers"
+    echo "  status               Show status of all servers"
+    echo "  dashboard [start|stop|status]  Dashboard management"
+    echo "  api [start|stop|status]        API server management"
+    echo "  list                 List automations"
+    echo "  help                 Show help"
     echo ""
 }
 
@@ -130,90 +129,85 @@ cmd_list() {
 
 cmd_dashboard() {
     check_skill_dir
-    log "Starting API Server (port 18799)..."
-    cd "$SKILL_DIR"
-    node api-server.js &
-    API_PID=$!
-    sleep 1
+    local action="${2:-status}"
     
-    log "Starting Next.js Dashboard (port 3000)..."
-    cd "$SKILL_DIR/dashboard"
-    npm run dev &
-    DASH_PID=$!
-    
-    echo ""
-    echo -e "${GREEN}🌐 Dashboard: http://localhost:3000${NC}"
-    echo -e "${YELLOW}🔌 API:       http://localhost:18799${NC}"
-    echo ""
-    echo "Press Ctrl+C to stop all servers"
-    
-    # Wait for Ctrl+C
-    trap "kill $API_PID $DASH_PID 2>/dev/null; exit" INT
-    wait
+    case "$action" in
+        start)
+            log "Starting Dashboard..."
+            if lsof -i :3000 >/dev/null 2>&1; then
+                warn "Dashboard already running"
+            else
+                cd "$SKILL_DIR/dashboard"
+                nohup npm run dev > /tmp/automation-dashboard.log 2>&1 &
+                sleep 3
+                if lsof -i :3000 >/dev/null 2>&1; then
+                    success "Dashboard started on port 3000"
+                else
+                    error "Failed to start Dashboard"
+                fi
+            fi
+            ;;
+        stop)
+            log "Stopping Dashboard..."
+            if lsof -i :3000 >/dev/null 2>&1; then
+                kill $(lsof -ti :3000) 2>/dev/null
+                sleep 1
+                success "Dashboard stopped"
+            else
+                warn "Dashboard not running"
+            fi
+            ;;
+        status|*)
+            if lsof -i :3000 >/dev/null 2>&1; then
+                echo -e "🌐 Dashboard: ${GREEN}Running${NC} (port 3000)"
+            else
+                echo -e "🌐 Dashboard: ${RED}Stopped${NC}"
+            fi
+            ;;
+    esac
 }
 
-cmd_start() {
+cmd_api() {
     check_skill_dir
-    log "Starting Automation Hub..."
-    cd "$SKILL_DIR"
+    local action="${2:-status}"
     
-    # Start API in background
-    if lsof -i :18799 >/dev/null 2>&1; then
-        warn "API already running on port 18799"
-    else
-        nohup node api-server.js > /tmp/automation-api.log 2>&1 &
-        sleep 1
-        if lsof -i :18799 >/dev/null 2>&1; then
-            success "API started (port 18799)"
-        else
-            error "Failed to start API"
-        fi
-    fi
-    
-    # Start Dashboard in background
-    if lsof -i :3000 >/dev/null 2>&1; then
-        warn "Dashboard already running on port 3000"
-    else
-        cd "$SKILL_DIR/dashboard"
-        nohup npm run dev > /tmp/automation-dashboard.log 2>&1 &
-        sleep 3
-        if lsof -i :3000 >/dev/null 2>&1; then
-            success "Dashboard started (port 3000)"
-        else
-            error "Failed to start Dashboard"
-        fi
-    fi
-    
-    echo ""
-    echo -e "${GREEN}✅ Automation Hub is running!${NC}"
-    echo ""
-    echo "   🌐 http://localhost:3000 - Dashboard"
-    echo "   🔌 http://localhost:18799 - API"
-    echo ""
-    echo "To stop: automationhub stop"
+    case "$action" in
+        start)
+            log "Starting API Server..."
+            if lsof -i :18799 >/dev/null 2>&1; then
+                warn "API already running"
+            else
+                cd "$SKILL_DIR"
+                nohup node api-server.js > /tmp/automation-api.log 2>&1 &
+                sleep 1
+                if lsof -i :18799 >/dev/null 2>&1; then
+                    success "API started on port 18799"
+                else
+                    error "Failed to start API"
+                fi
+            fi
+            ;;
+        stop)
+            log "Stopping API..."
+            if lsof -i :18799 >/dev/null 2>&1; then
+                kill $(lsof -ti :18799) 2>/dev/null
+                sleep 1
+                success "API stopped"
+            else
+                warn "API not running"
+            fi
+            ;;
+        status|*)
+            if lsof -i :18799 >/dev/null 2>&1; then
+                echo -e "🔌 API: ${GREEN}Running${NC} (port 18799)"
+            else
+                echo -e "🔌 API: ${RED}Stopped${NC}"
+            fi
+            ;;
+    esac
 }
 
-cmd_stop() {
-    log "Stopping Automation Hub..."
-    
-    # Kill API
-    if lsof -i :18799 >/dev/null 2>&1; then
-        kill $(lsof -ti :18799) 2>/dev/null
-        sleep 1
-        success "API stopped"
-    else
-        warn "API not running"
-    fi
-    
-    # Kill Dashboard
-    if lsof -i :3000 >/dev/null 2>&1; then
-        kill $(lsof -ti :3000) 2>/dev/null
-        sleep 1
-        success "Dashboard stopped"
-    else
-        warn "Dashboard not running"
-    fi
-}
+
 
 cmd_status() {
     echo ""
@@ -261,12 +255,14 @@ cmd_status() {
 
 case "$1" in
     install|setup) cmd_install ;;
-    start) cmd_start ;;
-    stop) cmd_stop ;;
-    dashboard) cmd_dashboard ;;
-    status) cmd_status ;;
-    list|ls) cmd_list ;;
-    help|--help|-h|"") show_help ;;
+    start) cmd_api start; cmd_dashboard start ;;
+    stop) cmd_dashboard stop; cmd_api stop ;;
+    dashboard) cmd_dashboard "${2:-start}" ;;
+    api) cmd_api "${2:-start}" ;;
+    status) 
+        cmd_api status
+        cmd_dashboard status
+        ;;
     *) cmd_list ;;
 esac
 CMDCAT
