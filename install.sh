@@ -152,6 +152,90 @@ cmd_dashboard() {
     wait
 }
 
+cmd_start() {
+    check_skill_dir
+    log "Starting Automation Hub servers..."
+    cd "$SKILL_DIR"
+    
+    # Start API
+    if lsof -i :18799 >/dev/null 2>&1; then
+        warn "API already running on port 18799"
+    else
+        node api-server.js > /tmp/automation-api.log 2>&1 &
+        echo $! > /tmp/automation-api.pid
+        success "API started (port 18799)"
+    fi
+    
+    # Start Dashboard
+    if lsof -i :3000 >/dev/null 2>&1; then
+        warn "Dashboard already running on port 3000"
+    else
+        cd "$SKILL_DIR/dashboard"
+        npm run dev > /tmp/automation-dashboard.log 2>&1 &
+        echo $! > /tmp/automation-dashboard.pid
+        success "Dashboard started (port 3000)"
+    fi
+    
+    echo ""
+    echo -e "${GREEN}✅ Automation Hub running!${NC}"
+    echo "   🌐 http://localhost:3000"
+    echo "   🔌 http://localhost:18799"
+    echo ""
+    echo "To stop: automationhub stop"
+}
+
+cmd_stop() {
+    log "Stopping Automation Hub..."
+    if [ -f /tmp/automation-api.pid ]; then
+        kill $(cat /tmp/automation-api.pid) 2>/dev/null
+        rm /tmp/automation-api.pid
+        success "API stopped"
+    fi
+    if [ -f /tmp/automation-dashboard.pid ]; then
+        kill $(cat /tmp/automation-dashboard.pid) 2>/dev/null
+        rm /tmp/automation-dashboard.pid
+        success "Dashboard stopped"
+    fi
+    if ! lsof -i :18799 >/dev/null 2>&1 && ! lsof -i :3000 >/dev/null 2>&1; then
+        warn "No servers were running"
+    fi
+}
+
+cmd_status() {
+    echo ""
+    echo -e "${MAGENTA}⚡ Automation Hub Status${NC}"
+    echo ""
+    
+    API_RUNNING=false
+    DASH_RUNNING=false
+    
+    if lsof -i :18799 >/dev/null 2>&1; then
+        API_RUNNING=true
+        echo -e "🔌 API:       ${GREEN}Running${NC} (port 18799)"
+    else
+        echo -e "🔌 API:       ${RED}Stopped${NC}"
+    fi
+    
+    if lsof -i :3000 >/dev/null 2>&1; then
+        DASH_RUNNING=true
+        echo -e "🌐 Dashboard: ${GREEN}Running${NC} (port 3000)"
+    else
+        echo -e "🌐 Dashboard: ${RED}Stopped${NC}"
+    fi
+    
+    echo ""
+    
+    TOTAL=$(ls -1 ~/.openclaw/automations/*.json 2>/dev/null | wc -l || echo 0)
+    echo -e "📊 Total automations: $TOTAL"
+    
+    if [ "$API_RUNNING" = true ]; then
+        echo ""
+        echo "Quick links:"
+        echo "   🌐 http://localhost:3000 - Dashboard"
+        echo "   🔌 http://localhost:18799/api/automations - API"
+    fi
+}
+
 cmd_status() {
     TOTAL=$(ls -1 ~/.openclaw/automations/*.json 2>/dev/null | wc -l || echo 0)
     echo ""
@@ -163,9 +247,11 @@ cmd_status() {
 
 case "$1" in
     install|setup) cmd_install ;;
-    list|ls) cmd_list ;;
-    dashboard|start) cmd_dashboard ;;
+    start) cmd_start ;;
+    stop) cmd_stop ;;
+    dashboard) cmd_dashboard ;;
     status) cmd_status ;;
+    list|ls) cmd_list ;;
     help|--help|-h|"") show_help ;;
     *) cmd_list ;;
 esac
