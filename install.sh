@@ -69,10 +69,16 @@ EOF
     mkdir -p "$BIN_DIR"
     cat > "$BIN_DIR/automationhub" << 'CMDCAT'
 #!/bin/bash
-# Automation Hub CLI - Usage: automationhub <command>
+# Automation Hub CLI
 
 SKILL_DIR="$HOME/.clawd/skills/automation-hub"
 AUTOMATIONS_DIR="$HOME/.openclaw/automations"
+
+# Use full path for lsof
+LSOF="/usr/sbin/lsof"
+if [ ! -x "$LSOF" ]; then
+    LSOF="lsof"
+fi
 
 # Colors
 RED='\033[0;31m'
@@ -86,6 +92,21 @@ log() { echo -e "${CYAN}[🤖]${NC} $1"; }
 success() { echo -e "${GREEN}✅ $1${NC}"; }
 warn() { echo -e "${YELLOW}⚠️  $1${NC}"; }
 error() { echo -e "${RED}❌ $1${NC}"; exit 1; }
+
+# Check if port is in use
+port_in_use() {
+    local port=$1
+    if $LSOF -i :$port >/dev/null 2>&1; then
+        return 0
+    fi
+    return 1
+}
+
+# Get PID from port
+pid_from_port() {
+    local port=$1
+    $LSOF -ti :$port 2>/dev/null
+}
 
 show_help() {
     echo ""
@@ -134,13 +155,13 @@ cmd_dashboard() {
     case "$action" in
         start)
             log "Starting Dashboard..."
-            if lsof -i :3000 >/dev/null 2>&1; then
+            if port_in_use 3000; then
                 warn "Dashboard already running"
             else
                 cd "$SKILL_DIR/dashboard"
                 nohup npm run dev > /tmp/automation-dashboard.log 2>&1 &
                 sleep 3
-                if lsof -i :3000 >/dev/null 2>&1; then
+                if port_in_use 3000; then
                     success "Dashboard started on port 3000"
                 else
                     error "Failed to start Dashboard"
@@ -149,16 +170,21 @@ cmd_dashboard() {
             ;;
         stop)
             log "Stopping Dashboard..."
-            if lsof -i :3000 >/dev/null 2>&1; then
-                kill $(lsof -ti :3000) 2>/dev/null
-                sleep 1
-                success "Dashboard stopped"
+            if port_in_use 3000; then
+                PID=$(pid_from_port 3000)
+                if [ -n "$PID" ]; then
+                    kill $PID 2>/dev/null
+                    sleep 1
+                    success "Dashboard stopped"
+                else
+                    warn "Could not find Dashboard process"
+                fi
             else
                 warn "Dashboard not running"
             fi
             ;;
         status|*)
-            if lsof -i :3000 >/dev/null 2>&1; then
+            if port_in_use 3000; then
                 echo -e "🌐 Dashboard: ${GREEN}Running${NC} (port 3000)"
             else
                 echo -e "🌐 Dashboard: ${RED}Stopped${NC}"
@@ -174,13 +200,13 @@ cmd_api() {
     case "$action" in
         start)
             log "Starting API Server..."
-            if lsof -i :18799 >/dev/null 2>&1; then
+            if port_in_use 18799; then
                 warn "API already running"
             else
                 cd "$SKILL_DIR"
                 nohup node api-server.js > /tmp/automation-api.log 2>&1 &
                 sleep 1
-                if lsof -i :18799 >/dev/null 2>&1; then
+                if port_in_use 18799; then
                     success "API started on port 18799"
                 else
                     error "Failed to start API"
@@ -189,16 +215,21 @@ cmd_api() {
             ;;
         stop)
             log "Stopping API..."
-            if lsof -i :18799 >/dev/null 2>&1; then
-                kill $(lsof -ti :18799) 2>/dev/null
-                sleep 1
-                success "API stopped"
+            if port_in_use 18799; then
+                PID=$(pid_from_port 18799)
+                if [ -n "$PID" ]; then
+                    kill $PID 2>/dev/null
+                    sleep 1
+                    success "API stopped"
+                else
+                    warn "Could not find API process"
+                fi
             else
                 warn "API not running"
             fi
             ;;
         status|*)
-            if lsof -i :18799 >/dev/null 2>&1; then
+            if port_in_use 18799; then
                 echo -e "🔌 API: ${GREEN}Running${NC} (port 18799)"
             else
                 echo -e "🔌 API: ${RED}Stopped${NC}"
