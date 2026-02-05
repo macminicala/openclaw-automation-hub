@@ -12,7 +12,10 @@ interface ReviewStepProps {
   triggerLabel: string
   action: string
   actionLabel: string
+  triggerConfig: Record<string, string>
   actionConfig: Record<string, string>
+  triggerLabels?: Record<string, string>
+  actionLabels?: Record<string, string>
   onNameChange: (name: string) => void
   onSave: () => void
   onBack: () => void
@@ -42,6 +45,7 @@ export function ReviewStep({
   triggerLabel,
   action,
   actionLabel,
+  triggerConfig,
   actionConfig,
   onNameChange,
   onSave,
@@ -100,7 +104,24 @@ export function ReviewStep({
           <Separator />
 
           <div>
-            <h4 className="font-medium mb-3">Configurazione</h4>
+            <h4 className="font-medium mb-3">Configurazione Trigger</h4>
+            <div className="bg-muted rounded-lg p-4 space-y-2">
+              {Object.entries(triggerConfig).map(([key, value]) => (
+                <div key={key} className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{key}:</span>
+                  <span className="font-mono">{value}</span>
+                </div>
+              ))}
+              {Object.keys(triggerConfig).length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Nessuna configurazione aggiuntiva
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-medium mb-3">Configurazione Azione</h4>
             <div className="bg-muted rounded-lg p-4 space-y-2">
               {Object.entries(actionConfig).map(([key, value]) => (
                 <div key={key} className="flex justify-between text-sm">

@@ -7,15 +7,14 @@ import { Plus } from "lucide-react"
 import { toast } from "sonner"
 import { Header } from "@/components/header"
 import { AutomationsList, type Automation } from "@/components/automations-list"
-import { AutomationBuilder } from "@/components/builder"
+import { useRouter } from "next/navigation"
 
 const API_URL = "http://localhost:18799/api"
 
 export default function Dashboard() {
+  const router = useRouter()
   const [automations, setAutomations] = useState<Automation[]>([])
   const [loading, setLoading] = useState(true)
-  const [showBuilder, setShowBuilder] = useState(false)
-  const [editingAutomation, setEditingAutomation] = useState<Automation | undefined>()
 
   const stats = {
     total: automations.length,
@@ -108,51 +107,7 @@ export default function Dashboard() {
   }
 
   const handleEdit = (automation: Automation) => {
-    setEditingAutomation(automation)
-    setShowBuilder(true)
-  }
-
-  const handleSave = async (data: {
-    name: string
-    trigger: string
-    action: string
-    enabled: boolean
-    config: Record<string, string>
-  }) => {
-    try {
-      const body = {
-        name: data.name,
-        trigger: { type: data.trigger, ...data.config },
-        action: { type: data.action, ...data.config },
-        enabled: data.enabled,
-      }
-
-      const url = editingAutomation
-        ? `${API_URL}/automations/${editingAutomation.id}`
-        : `${API_URL}/automations`
-      const method = editingAutomation ? "PUT" : "POST"
-
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      })
-
-      if (response.ok) {
-        toast.success(
-          editingAutomation
-            ? "Automazione aggiornata"
-            : "Automazione creata con successo"
-        )
-        setShowBuilder(false)
-        setEditingAutomation(undefined)
-        fetchAutomations()
-      } else {
-        toast.error("Errore nel salvataggio dell'automazione")
-      }
-    } catch (error) {
-      toast.error("Errore nel salvataggio dell'automazione")
-    }
+    router.push(`/builder?id=${automation.id}`)
   }
 
   return (
@@ -162,10 +117,7 @@ export default function Dashboard() {
       <main className="container mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-bold">Automazioni</h1>
-          <Button onClick={() => {
-            setEditingAutomation(undefined)
-            setShowBuilder(true)
-          }}>
+          <Button onClick={() => router.push("/builder")}>
             <Plus className="mr-2 h-4 w-4" />
             Crea Automazione
           </Button>
@@ -176,31 +128,9 @@ export default function Dashboard() {
           onToggle={handleToggle}
           onDelete={handleDelete}
           onEdit={handleEdit}
-          onCreate={() => setShowBuilder(true)}
+          onCreate={() => router.push("/builder")}
         />
       </main>
-
-      {showBuilder && (
-        <AutomationBuilder
-          automation={
-            editingAutomation
-              ? {
-                  id: editingAutomation.id,
-                  name: editingAutomation.name,
-                  trigger: editingAutomation.trigger,
-                  action: editingAutomation.action,
-                  enabled: editingAutomation.enabled,
-                  config: {},
-                }
-              : undefined
-          }
-          onClose={() => {
-            setShowBuilder(false)
-            setEditingAutomation(undefined)
-          }}
-          onSave={handleSave}
-        />
-      )}
 
       <Toaster position="bottom-right" />
     </div>
