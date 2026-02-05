@@ -1,5 +1,6 @@
 /**
  * Automation Hub Dashboard - Step-by-step Visual Builder
+ * Refactored for Tailwind CSS
  */
 
 const API_URL = '/api';
@@ -8,13 +9,13 @@ let pendingDeleteId = null;
 
 // Schedule presets with human-readable descriptions
 const SCHEDULE_PRESETS = {
-  'every-minute': { cron: '* * * * *', desc: 'Runs every minute (testing)' },
-  'every-hour': { cron: '0 * * * *', desc: 'Runs at the start of every hour (minute 0)' },
-  'every-day-9am': { cron: '0 9 * * *', desc: 'Runs every day at 9:00 AM' },
-  'every-day-6pm': { cron: '0 18 * * *', desc: 'Runs every day at 6:00 PM' },
-  'every-monday': { cron: '0 8 * * 1', desc: 'Runs every Monday at 8:00 AM' },
-  'every-weekday': { cron: '0 9 * * 1-5', desc: 'Runs Monday through Friday at 9:00 AM' },
-  'every-month': { cron: '0 9 1 * *', desc: 'Runs on the 1st day of every month at 9:00 AM' }
+  'every-minute': { cron: '* * * * *', desc: 'Esecuzione ogni minuto (test)' },
+  'every-hour': { cron: '0 * * * *', desc: 'Esecuzione all\'inizio di ogni ora (minuto 0)' },
+  'every-day-9am': { cron: '0 9 * * *', desc: 'Esecuzione ogni giorno alle 9:00' },
+  'every-day-6pm': { cron: '0 18 * * *', desc: 'Esecuzione ogni giorno alle 18:00' },
+  'every-monday': { cron: '0 8 * * 1', desc: 'Esecuzione ogni Lunedì alle 8:00' },
+  'every-weekday': { cron: '0 9 * * 1-5', desc: 'Esecuzione dal Lunedì al Venerdì alle 9:00' },
+  'every-month': { cron: '0 9 1 * *', desc: 'Esecuzione il primo giorno di ogni mese alle 9:00' }
 };
 
 // Builder state
@@ -26,35 +27,44 @@ let builderState = {
 
 const TRIGGER_META = {
   schedule: { icon: '⏰', label: 'Schedule', desc: 'Run at a specific time' },
-  webhook: { icon: '🔗', label: 'Webhook', desc: 'HTTP endpoint trigger' },
-  file_change: { icon: '📁', label: 'File Watch', desc: 'When files change' },
+  webhook: { icon: '🔗', label: 'HTTP Request', desc: 'Trigger via endpoint HTTP' },
+  file_change: { icon: '📁', label: 'Monitora File', desc: 'When files change' },
   email: { icon: '📧', label: 'Email', desc: 'When emails arrive' },
-  calendar: { icon: '📅', label: 'Calendar', desc: 'Calendar events' },
-  system: { icon: '🖥️', label: 'System', desc: 'Resource monitoring' }
+  calendar: { icon: '📅', label: 'Calendario', desc: 'Calendar events' },
+  system: { icon: '🖥️', label: 'Sistema', desc: 'Resource monitoring' }
 };
 
 const ACTION_META = {
-  shell: { icon: '💻', label: 'Run Command', desc: 'Execute a terminal command' },
-  agent: { icon: '🤖', label: 'AI Agent', desc: 'Run an AI task' },
+  shell: { icon: '💻', label: 'Esegui Comando', desc: 'Execute a terminal command' },
+  agent: { icon: '🤖', label: 'Assistente AI', desc: 'Run an AI task' },
   git: { icon: '🔀', label: 'Git', desc: 'Auto-commit & push' },
-  notify: { icon: '📱', label: 'Notify', desc: 'Send a notification' },
-  email_reply: { icon: '📧', label: 'Email Reply', desc: 'Send an email' }
+  notify: { icon: '📱', label: 'Notifica', desc: 'Send a notification' },
+  email_reply: { icon: '📧', label: 'Risposta Email', desc: 'Send an email' }
 };
 
 // ============ TABS ============
 
 function switchTab(tabName) {
-  document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+  // Remove active class from all tabs and contents
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.classList.remove('active', 'bg-accent-primary', 'text-white', 'border-accent-primary');
+    tab.classList.add('bg-transparent', 'border-gray-600', 'text-text-secondary');
+  });
   document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
+  // Add active class to selected tab and content
   const tab = document.querySelector(`.tab[onclick="switchTab('${tabName}')"]`);
   const content = document.getElementById(`tab-${tabName}`);
 
-  if (tab) tab.classList.add('active');
+  if (tab) {
+    tab.classList.add('active', 'bg-accent-primary', 'text-white', 'border-accent-primary');
+    tab.classList.remove('bg-transparent', 'border-gray-600', 'text-text-secondary');
+  }
   if (content) content.classList.add('active');
 
-  if (tabName === 'builder') {
-    // Always start the builder in a clean, predictable state
+  if (tabName === 'automations') {
+    loadAutomations();
+  } else if (tabName === 'builder') {
     resetBuilder();
   }
 }
@@ -62,77 +72,140 @@ function switchTab(tabName) {
 // ============ BUILDER FLOW ============
 
 function goToStep(step) {
-  // Guardrails (so user always knows what to do next)
+  // Guardrails
   if (step === 2 && !builderState.trigger) {
-    showToast('Pick a trigger to continue', 'error');
+    showToast('Seleziona un trigger per continuare', 'error');
     return;
   }
   if (step === 3 && !builderState.action) {
-    showToast('Pick an action to continue', 'error');
+    showToast('Seleziona un\'azione per continuare', 'error');
     return;
   }
 
   builderState.step = step;
 
-  document.querySelectorAll('.builder-step').forEach(el => el.classList.remove('active'));
-  document.getElementById(`step-${step}`)?.classList.add('active');
+  // Show/hide steps
+  document.querySelectorAll('.builder-step').forEach(el => {
+    el.classList.add('hidden');
+    el.classList.remove('block');
+  });
+  const stepEl = document.getElementById(`step-${step}`);
+  if (stepEl) {
+    stepEl.classList.remove('hidden');
+    stepEl.classList.add('block');
+  }
 
   updateProgress();
 
   if (step === 3) updateSummary();
 
-  // Scroll to top of builder on step change (nice on mobile)
-  document.querySelector('.step-builder')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Scroll to top of builder
+  const builder = document.querySelector('.step-builder');
+  if (builder) builder.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function updateProgress() {
   const current = builderState.step;
-  document.querySelectorAll('.progress-step').forEach(stepEl => {
-    const n = parseInt(stepEl.getAttribute('data-step'), 10);
-    stepEl.classList.toggle('active', n === current);
-    stepEl.classList.toggle('done', n < current);
+  
+  document.querySelectorAll('.flex.items-center.gap-2[data-step]').forEach((stepEl, idx) => {
+    const n = idx + 1;
+    const numberEl = stepEl.querySelector('.step-number');
+    const isActive = n === current;
+    const isDone = n < current;
+    
+    if (isActive) {
+      stepEl.classList.remove('opacity-50');
+      if (numberEl) {
+        numberEl.classList.remove('bg-gray-600');
+        numberEl.classList.add('bg-accent-primary', 'text-white');
+      }
+    } else if (isDone) {
+      stepEl.classList.remove('opacity-50');
+      if (numberEl) {
+        numberEl.classList.remove('bg-accent-primary', 'text-white');
+        numberEl.classList.add('bg-green-500', 'text-white');
+      }
+    } else {
+      stepEl.classList.add('opacity-50');
+      if (numberEl) {
+        numberEl.classList.remove('bg-accent-primary', 'bg-green-500', 'text-white');
+        numberEl.classList.add('bg-gray-600', 'text-white');
+      }
+    }
   });
 }
 
 function selectTrigger(triggerType) {
   builderState.trigger = triggerType;
 
-  // Visual selection
-  document.querySelectorAll('[data-trigger]').forEach(card => card.classList.remove('selected'));
-  document.querySelector(`[data-trigger="${triggerType}"]`)?.classList.add('selected');
+  // Visual selection - remove selected from all, add to current
+  document.querySelectorAll('[data-trigger]').forEach(card => {
+    card.classList.remove('border-accent-primary', 'bg-bg-card', 'selected');
+    card.classList.add('border-gray-600', 'bg-bg-elevated');
+  });
+  const selectedCard = document.querySelector(`[data-trigger="${triggerType}"]`);
+  if (selectedCard) {
+    selectedCard.classList.add('border-accent-primary', 'bg-bg-card', 'selected');
+    selectedCard.classList.remove('border-gray-600', 'bg-bg-elevated');
+  }
 
-  // Show settings container + correct config block
+  // Show settings container
   const settings = document.getElementById('trigger-settings');
-  if (settings) settings.style.display = 'block';
+  if (settings) {
+    settings.classList.remove('hidden');
+    settings.classList.add('block');
+  }
 
-  document.querySelectorAll('.trigger-config').forEach(cfg => (cfg.style.display = 'none'));
-  document.querySelector(`.trigger-config[data-trigger="${triggerType}"]`)?.style.setProperty('display', 'block');
+  // Show correct config block
+  document.querySelectorAll('.trigger-config').forEach(cfg => {
+    cfg.classList.add('hidden');
+    cfg.classList.remove('block');
+  });
+  const configEl = document.querySelector(`.trigger-config[data-trigger="${triggerType}"]`);
+  if (configEl) {
+    configEl.classList.remove('hidden');
+    configEl.classList.add('block');
+  }
 
-  // Enable next
+  // Enable next button
   const nextBtn = document.getElementById('btn-next-1');
   if (nextBtn) nextBtn.disabled = false;
 
-  // Update any dynamic helper text
+  // Update dynamic helper text
   if (triggerType === 'schedule') updateSchedulePreset();
   if (triggerType === 'webhook') updateWebhookPreview();
-
-  // Auto-advance for speed (but only if no settings are needed)
-  // Schedule/webhook/file/email/calendar/system all have optional settings; keep on same step.
 }
 
 function selectAction(actionType) {
   builderState.action = actionType;
 
   // Visual selection
-  document.querySelectorAll('[data-action]').forEach(card => card.classList.remove('selected'));
-  document.querySelector(`[data-action="${actionType}"]`)?.classList.add('selected');
+  document.querySelectorAll('[data-action]').forEach(card => {
+    card.classList.remove('border-accent-primary', 'bg-bg-card', 'selected');
+    card.classList.add('border-gray-600', 'bg-bg-elevated');
+  });
+  const selectedCard = document.querySelector(`[data-action="${actionType}"]`);
+  if (selectedCard) {
+    selectedCard.classList.add('border-accent-primary', 'bg-bg-card', 'selected');
+    selectedCard.classList.remove('border-gray-600', 'bg-bg-elevated');
+  }
 
   // Show settings
   const settings = document.getElementById('action-settings');
-  if (settings) settings.style.display = 'block';
+  if (settings) {
+    settings.classList.remove('hidden');
+    settings.classList.add('block');
+  }
 
-  document.querySelectorAll('.action-config').forEach(cfg => (cfg.style.display = 'none'));
-  document.querySelector(`.action-config[data-action="${actionType}"]`)?.style.setProperty('display', 'block');
+  document.querySelectorAll('.action-config').forEach(cfg => {
+    cfg.classList.add('hidden');
+    cfg.classList.remove('block');
+  });
+  const configEl = document.querySelector(`.action-config[data-action="${actionType}"]`);
+  if (configEl) {
+    configEl.classList.remove('hidden');
+    configEl.classList.add('block');
+  }
 
   // Enable next
   const nextBtn = document.getElementById('btn-next-2');
@@ -150,9 +223,9 @@ function updateSchedulePreset() {
 
   if (meta) {
     cronEl.value = meta.cron;
-    previewEl.textContent = `Runs: ${meta.desc}`;
+    previewEl.textContent = `Esecuzione: ${meta.desc}`;
   } else {
-    previewEl.textContent = 'Runs: Custom schedule';
+    previewEl.textContent = 'Esecuzione: Schedule personalizzato';
   }
 }
 
@@ -192,35 +265,55 @@ function updateSummary() {
 function resetBuilder() {
   builderState = { step: 1, trigger: null, action: null };
 
-  // Steps
-  document.querySelectorAll('.builder-step').forEach(el => el.classList.remove('active'));
-  document.getElementById('step-1')?.classList.add('active');
+  // Show step 1, hide others
+  document.querySelectorAll('.builder-step').forEach(el => {
+    el.classList.add('hidden');
+    el.classList.remove('block');
+  });
+  const step1 = document.getElementById('step-1');
+  if (step1) {
+    step1.classList.remove('hidden');
+    step1.classList.add('block');
+  }
 
-  // Progress
+  // Reset progress
   updateProgress();
 
-  // Selections
-  document.querySelectorAll('.choice-card.selected').forEach(el => el.classList.remove('selected'));
+  // Clear selections
+  document.querySelectorAll('.choice-card').forEach(el => {
+    el.classList.remove('selected', 'border-accent-primary', 'bg-bg-card');
+    el.classList.add('border-gray-600', 'bg-bg-elevated');
+  });
 
-  // Settings
-  document.getElementById('trigger-settings')?.style.setProperty('display', 'none');
-  document.getElementById('action-settings')?.style.setProperty('display', 'none');
-  document.querySelectorAll('.trigger-config').forEach(cfg => (cfg.style.display = 'none'));
-  document.querySelectorAll('.action-config').forEach(cfg => (cfg.style.display = 'none'));
+  // Hide settings
+  const triggerSettings = document.getElementById('trigger-settings');
+  const actionSettings = document.getElementById('action-settings');
+  if (triggerSettings) {
+    triggerSettings.classList.add('hidden');
+    triggerSettings.classList.remove('block');
+  }
+  if (actionSettings) {
+    actionSettings.classList.add('hidden');
+    actionSettings.classList.remove('block');
+  }
+  document.querySelectorAll('.trigger-config, .action-config').forEach(cfg => {
+    cfg.classList.add('hidden');
+    cfg.classList.remove('block');
+  });
 
-  // Buttons
+  // Reset buttons
   const next1 = document.getElementById('btn-next-1');
   const next2 = document.getElementById('btn-next-2');
   if (next1) next1.disabled = true;
   if (next2) next2.disabled = true;
 
-  // Inputs (safe defaults)
+  // Reset inputs to safe defaults
   const presetEl = document.getElementById('schedule-preset');
   if (presetEl) presetEl.value = 'every-day-9am';
   const cronEl = document.getElementById('cron');
   if (cronEl) cronEl.value = SCHEDULE_PRESETS['every-day-9am'].cron;
   const previewEl = document.getElementById('cron-preview');
-  if (previewEl) previewEl.textContent = `Runs: ${SCHEDULE_PRESETS['every-day-9am'].desc}`;
+  if (previewEl) previewEl.textContent = `Esecuzione: ${SCHEDULE_PRESETS['every-day-9am'].desc}`;
 
   const portEl = document.getElementById('webhook-port');
   if (portEl) portEl.value = 18800;
@@ -240,19 +333,19 @@ function resetBuilder() {
 
 async function saveAutomationFromBuilder() {
   if (!builderState.trigger) {
-    showToast('Pick a trigger first', 'error');
+    showToast('Seleziona prima un trigger', 'error');
     goToStep(1);
     return;
   }
   if (!builderState.action) {
-    showToast('Pick an action first', 'error');
+    showToast('Seleziona prima un\'azione', 'error');
     goToStep(2);
     return;
   }
 
   const name = (document.getElementById('automation-name')?.value || '').trim();
   if (!name) {
-    showToast('Give your automation a name', 'error');
+    showToast('Dai un nome alla tua automazione', 'error');
     return;
   }
 
@@ -309,7 +402,7 @@ async function saveAutomationFromBuilder() {
     case 'shell': {
       const command = (document.getElementById('shell-command')?.value || '').trim();
       if (!command) {
-        showToast('Enter the command to run', 'error');
+        showToast('Inserisci il comando da eseguire', 'error');
         goToStep(2);
         return;
       }
@@ -319,7 +412,7 @@ async function saveAutomationFromBuilder() {
     case 'agent': {
       const prompt = (document.getElementById('agent-prompt')?.value || '').trim();
       if (!prompt) {
-        showToast('Describe what the AI should do', 'error');
+        showToast('Descrivi cosa deve fare l\'AI', 'error');
         goToStep(2);
         return;
       }
@@ -330,7 +423,7 @@ async function saveAutomationFromBuilder() {
     case 'git': {
       const path = (document.getElementById('git-path')?.value || '').trim();
       if (!path) {
-        showToast('Enter the repository path', 'error');
+        showToast('Inserisci il percorso del repository', 'error');
         goToStep(2);
         return;
       }
@@ -347,7 +440,7 @@ async function saveAutomationFromBuilder() {
       const channel = document.getElementById('notify-channel')?.value || 'telegram';
       const message = (document.getElementById('notify-message')?.value || '').trim();
       if (!message) {
-        showToast('Enter the notification message', 'error');
+        showToast('Inserisci il messaggio di notifica', 'error');
         goToStep(2);
         return;
       }
@@ -358,7 +451,7 @@ async function saveAutomationFromBuilder() {
       const subject = (document.getElementById('email-subject')?.value || '').trim();
       const body = (document.getElementById('email-body')?.value || '').trim();
       if (!subject || !body) {
-        showToast('Fill in the email subject and message', 'error');
+        showToast('Compila oggetto e messaggio email', 'error');
         goToStep(2);
         return;
       }
@@ -369,11 +462,11 @@ async function saveAutomationFromBuilder() {
 
   try {
     await saveAutomation(automation);
-    showToast('Automation saved!', 'success');
+    showToast('Automazione salvata!', 'success');
     resetBuilder();
     switchTab('automations');
   } catch (e) {
-    // saveAutomation already handles toast
+    // saveAutomation handles toast
   }
 }
 
@@ -390,6 +483,7 @@ async function loadAutomations() {
 
   try {
     const response = await fetch(`${API_URL}/automations`);
+    if (!response.ok) throw new Error('Failed to fetch');
     const data = await response.json();
     automations = data.automations || {};
     updateStats(data.stats || {});
@@ -405,24 +499,30 @@ async function loadAutomations() {
     console.error('Failed to load automations:', error);
     if (loading) loading.style.display = 'none';
     if (empty) empty.style.display = 'block';
-    showToast('Could not load automations. Please refresh.', 'error');
+    showToast('Impossibile caricare le automazioni. Ricarica la pagina.', 'error');
   }
 }
 
 async function toggleAutomation(id, enabled) {
   const automationName = automations[id]?.name || id;
   const btn = event?.target;
-  if (btn) btn.classList.add('btn-loading');
+  if (btn) {
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+    btn.disabled = true;
+  }
 
   const endpoint = enabled ? 'disable' : 'enable';
   try {
     await fetch(`${API_URL}/automations/${id}/${endpoint}`, { method: 'POST' });
     await loadAutomations();
-    logActivity(`${enabled ? 'Disabled' : 'Enabled'} "${automationName}"`, 'success');
+    logActivity(`${enabled ? 'Disabilitato' : 'Abilitato'} "${automationName}"`, 'success');
   } catch (error) {
-    showToast('Could not complete the action. Please try again.', 'error');
+    showToast('Impossibile completare l\'azione. Riprova.', 'error');
   } finally {
-    if (btn) btn.classList.remove('btn-loading');
+    if (btn) {
+      btn.classList.remove('opacity-50', 'cursor-not-allowed');
+      btn.disabled = false;
+    }
   }
 }
 
@@ -430,20 +530,22 @@ async function runAutomation(id) {
   const automationName = automations[id]?.name || id;
   const btn = event?.target;
   if (btn) {
-    btn.classList.add('btn-loading');
-    btn.textContent = 'Running...';
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+    btn.textContent = 'In esecuzione...';
+    btn.disabled = true;
   }
 
   try {
     await fetch(`${API_URL}/automations/${id}/run`, { method: 'POST' });
-    logActivity(`Started running "${automationName}"`, 'info');
-    showToast('Automation is now running!', 'success');
+    logActivity(`Avviata esecuzione di "${automationName}"`, 'info');
+    showToast('Automazione in esecuzione!', 'success');
   } catch (error) {
-    showToast('Could not run the automation. Please try again.', 'error');
+    showToast('Impossibile eseguire l\'automazione. Riprova.', 'error');
   } finally {
     if (btn) {
-      btn.classList.remove('btn-loading');
-      btn.textContent = '▶ Run Now';
+      btn.classList.remove('opacity-50', 'cursor-not-allowed');
+      btn.textContent = '▶ Esegui';
+      btn.disabled = false;
     }
   }
 }
@@ -451,14 +553,31 @@ async function runAutomation(id) {
 function confirmDelete(id) {
   const automationName = automations[id]?.name || id;
   pendingDeleteId = id;
-  document.getElementById('delete-message').textContent = `Are you sure you want to delete "${automationName}"? This action cannot be undone.`;
-  document.getElementById('delete-modal-overlay').classList.add('active');
-  document.getElementById('delete-modal').classList.add('active');
+  document.getElementById('delete-message').textContent = `Sei sicuro di voler eliminare "${automationName}"? L'azione non può essere annullata.`;
+  
+  const overlay = document.getElementById('delete-modal-overlay');
+  const modal = document.getElementById('delete-modal');
+  if (overlay) {
+    overlay.classList.remove('opacity-0', 'invisible');
+    overlay.classList.add('opacity-100', 'visible');
+  }
+  if (modal) {
+    modal.classList.remove('opacity-0', 'invisible');
+    modal.classList.add('opacity-100', 'visible');
+  }
 }
 
 function closeDeleteModal() {
-  document.getElementById('delete-modal-overlay').classList.remove('active');
-  document.getElementById('delete-modal').classList.remove('active');
+  const overlay = document.getElementById('delete-modal-overlay');
+  const modal = document.getElementById('delete-modal');
+  if (overlay) {
+    overlay.classList.add('opacity-0', 'invisible');
+    overlay.classList.remove('opacity-100', 'visible');
+  }
+  if (modal) {
+    modal.classList.add('opacity-0', 'invisible');
+    modal.classList.remove('opacity-100', 'visible');
+  }
   pendingDeleteId = null;
 }
 
@@ -466,19 +585,25 @@ async function executeDelete() {
   if (!pendingDeleteId) return;
 
   const btn = document.getElementById('confirm-delete-btn');
-  btn.classList.add('btn-loading');
-  btn.textContent = 'Deleting...';
+  if (btn) {
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+    btn.textContent = 'Eliminando...';
+    btn.disabled = true;
+  }
 
   try {
     await fetch(`${API_URL}/automations/${pendingDeleteId}`, { method: 'DELETE' });
     await loadAutomations();
-    logActivity(`Deleted "${automations[pendingDeleteId]?.name || pendingDeleteId}"`, 'warning');
-    showToast('Automation deleted successfully', 'success');
+    logActivity(`Eliminato "${automations[pendingDeleteId]?.name || pendingDeleteId}"`, 'warning');
+    showToast('Automazione eliminata', 'success');
   } catch (error) {
-    showToast('Could not delete the automation. Please try again.', 'error');
+    showToast('Impossibile eliminare l\'automazione. Riprova.', 'error');
   } finally {
-    btn.classList.remove('btn-loading');
-    btn.textContent = 'Delete';
+    if (btn) {
+      btn.classList.remove('opacity-50', 'cursor-not-allowed');
+      btn.textContent = 'Elimina';
+      btn.disabled = false;
+    }
     closeDeleteModal();
   }
 }
@@ -491,9 +616,9 @@ async function saveAutomation(automation) {
       body: JSON.stringify(automation)
     });
     await loadAutomations();
-    logActivity(`Created new automation "${automation.name}"`, 'success');
+    logActivity(`Creata nuova automazione "${automation.name}"`, 'success');
   } catch (error) {
-    showToast('Could not save the automation. Please check your inputs and try again.', 'error');
+    showToast('Impossibile salvare l\'automazione. Controlla i dati e riprova.', 'error');
     throw error;
   }
 }
@@ -501,8 +626,10 @@ async function saveAutomation(automation) {
 // ============ RENDER FUNCTIONS ============
 
 function updateStats(stats) {
-  document.getElementById('stat-total').textContent = stats.total || 0;
-  document.getElementById('stat-enabled').textContent = stats.enabled || 0;
+  const totalEl = document.getElementById('stat-total');
+  const enabledEl = document.getElementById('stat-enabled');
+  if (totalEl) totalEl.textContent = stats.total || 0;
+  if (enabledEl) enabledEl.textContent = stats.enabled || 0;
 }
 
 function renderAutomations(filterText = '') {
@@ -522,11 +649,11 @@ function renderAutomations(filterText = '') {
     grid.style.display = 'none';
     emptyState.style.display = 'block';
     if (filter) {
-      emptyState.querySelector('h3').textContent = 'No matching automations';
-      emptyState.querySelector('p').textContent = 'Try a different search term';
+      emptyState.querySelector('h3').textContent = 'Nessuna automazione trovata';
+      emptyState.querySelector('p').textContent = 'Prova con un altro termine di ricerca';
     } else {
-      emptyState.querySelector('h3').textContent = 'No automations yet';
-      emptyState.querySelector('p').textContent = 'Create your first automation to get started';
+      emptyState.querySelector('h3').textContent = 'Nessuna automazione ancora';
+      emptyState.querySelector('p').textContent = 'Crea la tua prima automazione per iniziare';
     }
     return;
   }
@@ -537,34 +664,34 @@ function renderAutomations(filterText = '') {
   grid.innerHTML = list.map(automation => {
     const actionType = automation.actions?.[0]?.type || 'unknown';
     const actionDesc = getActionDescription(automation);
-    const lastRun = automation.lastRun ? formatRelativeTime(automation.lastRun) : 'Never run';
+    const lastRun = automation.lastRun ? formatRelativeTime(automation.lastRun) : 'Mai eseguita';
 
     return `
-    <div class="automation-card">
-      <div class="card-header">
+    <div class="bg-bg-card border border-gray-700 rounded-xl p-5 hover:border-accent-primary hover:shadow-lg transition-all cursor-pointer">
+      <div class="flex justify-between items-start mb-3">
         <div>
-          <div class="card-title">${escapeHtml(automation.name)}</div>
-          <div class="card-schedule">⚡ ${escapeHtml(getTriggerDescription(automation.trigger))}</div>
-          <div class="card-last-run">Last run: ${escapeHtml(lastRun)}</div>
+          <div class="font-semibold text-lg">${escapeHtml(automation.name)}</div>
+          <div class="text-sm text-text-secondary">⚡ ${escapeHtml(getTriggerDescription(automation.trigger))}</div>
+          <div class="text-sm text-text-secondary opacity-70">Ultima esecuzione: ${escapeHtml(lastRun)}</div>
         </div>
-        <div class="card-status ${automation.enabled ? 'enabled' : 'disabled'}">
-          <span class="status-dot"></span>
-          ${automation.enabled ? 'Active' : 'Paused'}
+        <div class="flex items-center gap-2 text-sm font-medium px-3 py-1 rounded-full ${automation.enabled ? 'bg-green-500/15 text-green-400' : 'bg-gray-500/15 text-text-secondary'}">
+          <span class="w-2 h-2 rounded-full ${automation.enabled ? 'bg-green-400' : 'bg-gray-400'}"></span>
+          ${automation.enabled ? 'Attiva' : 'In pausa'}
         </div>
       </div>
 
-      <div class="card-action">
+      <div class="bg-bg-elevated rounded-lg px-4 py-2 mb-4 text-sm">
         ${getActionIcon(actionType)} ${escapeHtml(actionDesc)}
       </div>
 
-      <div class="card-actions">
-        <button class="btn btn-secondary btn-small" onclick="toggleAutomation('${escapeHtml(automation.id)}', ${automation.enabled})">
-          ${automation.enabled ? '⏸ Disable' : '▶ Enable'}
+      <div class="flex gap-2 pt-4 border-t border-gray-700">
+        <button class="flex-1 bg-transparent border border-gray-600 hover:border-gray-500 px-3 py-2 rounded-lg text-sm font-medium transition-all" onclick="toggleAutomation('${escapeHtml(automation.id)}', ${automation.enabled})">
+          ${automation.enabled ? '⏸ Disabilita' : '▶ Abilita'}
         </button>
-        <button class="btn btn-secondary btn-small" onclick="runAutomation('${escapeHtml(automation.id)}')">
-          ▶ Run Now
+        <button class="flex-1 bg-transparent border border-gray-600 hover:border-gray-500 px-3 py-2 rounded-lg text-sm font-medium transition-all" onclick="runAutomation('${escapeHtml(automation.id)}')">
+          ▶ Esegui
         </button>
-        <button class="btn btn-danger btn-small" onclick="confirmDelete('${escapeHtml(automation.id)}')">
+        <button class="bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 text-red-400 px-3 py-2 rounded-lg text-sm transition-all" onclick="confirmDelete('${escapeHtml(automation.id)}')">
           🗑️
         </button>
       </div>
@@ -574,34 +701,34 @@ function renderAutomations(filterText = '') {
 }
 
 function getTriggerDescription(trigger) {
-  if (!trigger?.type) return 'No trigger';
+  if (!trigger?.type) return 'Nessun trigger';
   const t = trigger.type;
   if (t === 'schedule') return `Schedule (${trigger.cron || 'cron'})`;
-  if (t === 'webhook') return `Webhook (${trigger.endpoint || '/'} on ${trigger.port || 18800})`;
-  if (t === 'file_change') return `File Watch (${trigger.path || ''})`;
-  if (t === 'email') return `Email (${trigger.user || 'inbox'})`;
-  if (t === 'calendar') return `Calendar (${trigger.provider || 'provider'})`;
-  if (t === 'system') return 'System thresholds';
+  if (t === 'webhook') return `HTTP Request (${trigger.endpoint || '/'} su ${trigger.port || 18800})`;
+  if (t === 'file_change') return `Monitora File (${trigger.path || ''})`;
+  if (t === 'email') return `Email (${trigger.user || 'casella'})`;
+  if (t === 'calendar') return `Calendario (${trigger.provider || 'provider'})`;
+  if (t === 'system') return 'Soglie sistema';
   return t;
 }
 
 function getActionDescription(automation) {
   const action = automation.actions?.[0];
-  if (!action) return 'No action configured';
+  if (!action) return 'Nessuna azione configurata';
 
   switch (action.type) {
     case 'shell':
-      return `Runs: ${truncate(action.command || action.exec || 'command', 42)}`;
+      return `Esegue: ${truncate(action.command || action.exec || 'comando', 42)}`;
     case 'notify':
-      return `Notifies: ${truncate(action.message || 'message', 42)}`;
+      return `Notifica: ${truncate(action.message || 'messaggio', 42)}`;
     case 'email':
-      return `Sends email${action.to ? ` to ${truncate(action.to, 28)}` : ''}`;
+      return `Invia email${action.to ? ` a ${truncate(action.to, 28)}` : ''}`;
     case 'agent':
-      return 'Runs AI Agent task';
+      return 'Esegue task AI';
     case 'git':
-      return `Git on ${truncate(action.path || 'repo', 36)}`;
+      return `Git su ${truncate(action.path || 'repo', 36)}`;
     default:
-      return 'Action: ' + action.type;
+      return 'Azione: ' + action.type;
   }
 }
 
@@ -622,7 +749,7 @@ function getActionIcon(type) {
 }
 
 function formatRelativeTime(dateString) {
-  if (!dateString) return 'Never';
+  if (!dateString) return 'Mai';
 
   const date = new Date(dateString);
   const now = new Date();
@@ -631,10 +758,10 @@ function formatRelativeTime(dateString) {
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  if (diffMins < 1) return 'Adesso';
+  if (diffMins < 60) return `${diffMins} minuto${diffMins > 1 ? 'i' : ''} fa`;
+  if (diffHours < 24) return `${diffHours} ora${diffHours > 1 ? '' : ''} fa`;
+  if (diffDays < 7) return `${diffDays} giorno${diffDays > 1 ? 'i' : ''} fa`;
 
   return date.toLocaleDateString();
 }
@@ -672,8 +799,17 @@ function logActivity(message, type = 'info') {
 
   const time = formatRelativeTime(new Date());
   const item = document.createElement('div');
-  item.className = `log-item log-${type}`;
-  item.innerHTML = `<span>${escapeHtml(message)}</span><span>${escapeHtml(time)}</span>`;
+  item.className = `log-item px-3 py-1.5 rounded mb-1 animate-fade-in flex justify-between`;
+  
+  const typeClasses = {
+    info: 'bg-blue-500/10 text-blue-400',
+    success: 'bg-green-500/10 text-green-400',
+    warning: 'bg-yellow-500/10 text-yellow-400',
+    error: 'bg-red-500/10 text-red-400'
+  };
+  
+  item.className += ` ${typeClasses[type] || typeClasses.info}`;
+  item.innerHTML = `<span>${escapeHtml(message)}</span><span class="opacity-70">${escapeHtml(time)}</span>`;
   feed.insertBefore(item, feed.firstChild);
 
   while (feed.children.length > 20) {
@@ -686,12 +822,18 @@ function showToast(message, type = 'success') {
   if (!container) return;
 
   const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
+  toast.className = `bg-bg-card border border-gray-700 rounded-lg px-5 py-3 flex items-center gap-3 shadow-lg animate-fade-in`;
+  if (type === 'success') {
+    toast.classList.add('border-l-4', 'border-l-green-500');
+  } else {
+    toast.classList.add('border-l-4', 'border-l-red-500');
+  }
+  
   toast.innerHTML = `<span>${type === 'success' ? '✅' : '⚠️'}</span><span>${escapeHtml(message)}</span>`;
   container.appendChild(toast);
 
   setTimeout(() => {
-    toast.style.animation = 'slideIn 0.3s ease reverse';
+    toast.style.animation = 'fadeIn 0.3s ease reverse';
     setTimeout(() => toast.remove(), 300);
   }, 4000);
 }
@@ -709,7 +851,5 @@ function generateId(name) {
 document.addEventListener('DOMContentLoaded', () => {
   setupEventListeners();
   loadAutomations();
-
-  // Make builder step UI consistent on first load
   resetBuilder();
 });

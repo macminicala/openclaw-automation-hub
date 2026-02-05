@@ -1,384 +1,442 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="it">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Automation Hub ⚡</title>
-  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: { primary: '#0f0f23', secondary: '#1a1a2e', card: '#16213e', elevated: '#1f2937' },
+            text: { primary: '#eaeaea', secondary: '#a0a0b0' },
+            accent: { primary: '#6366f1', hover: '#818cf8', schedule: '#10b981', webhook: '#f59e0b', event: '#8b5cf6', system: '#ef4444' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #1a1a2e; }
+    ::-webkit-scrollbar-thumb { background: #3f3f5a; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #5a5a7a; }
+    
+    /* Smooth animations */
+    .animate-fade-in { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .animate-spin { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .animate-pulse { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    
+    /* Loading skeleton */
+    .skeleton { background: linear-gradient(90deg, #16213e 25%, #1f2937 50%, #16213e 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  </style>
 </head>
-<body>
+<body class="bg-bg-primary text-text-primary min-h-screen font-sans antialiased">
   <div class="app">
+    
     <!-- Header -->
-    <header class="header">
-      <div class="header-content">
-        <div class="logo">
-          <span class="logo-icon">⚡</span>
-          <h1>Automation Hub</h1>
+    <header class="bg-bg-secondary border-b border-gray-700 sticky top-0 z-50 px-8 py-4">
+      <div class="max-w-7xl mx-auto flex justify-between items-center gap-4">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">⚡</span>
+          <h1 class="text-xl font-semibold bg-gradient-to-r from-accent-primary to-purple-500 bg-clip-text text-transparent">Automation Hub</h1>
         </div>
-        <input type="text" id="search-automations" placeholder="Search automations..." class="search-input" oninput="filterAutomations()">
+        <input type="text" id="search-automations" placeholder="Cerca automazioni..." 
+               class="bg-bg-card border border-gray-600 rounded-lg px-4 py-2.5 text-sm w-64 focus:outline-none focus:border-accent-primary focus:ring-2 focus:ring-accent-primary/20 transition-all"
+               oninput="filterAutomations()">
       </div>
     </header>
 
     <!-- Stats Bar -->
-    <div class="stats-bar">
-      <div class="stat">
-        <span class="stat-value" id="stat-total">0</span>
-        <span class="stat-label">Total</span>
+    <div class="max-w-7xl mx-auto px-8 py-6 flex gap-4 flex-wrap">
+      <div class="bg-bg-card border border-gray-700 rounded-xl px-5 py-4 min-w-[100px] text-center hover:shadow-lg hover:-translate-y-0.5 transition-all">
+        <span class="block text-2xl font-bold" id="stat-total">0</span>
+        <span class="text-xs text-text-secondary">Totali</span>
       </div>
-      <div class="stat">
-        <span class="stat-value stat-enabled" id="stat-enabled">0</span>
-        <span class="stat-label">Active</span>
+      <div class="bg-bg-card border border-gray-700 rounded-xl px-5 py-4 min-w-[100px] text-center hover:shadow-lg hover:-translate-y-0.5 transition-all">
+        <span class="block text-2xl font-bold text-green-500" id="stat-enabled">0</span>
+        <span class="text-xs text-text-secondary">Attive</span>
       </div>
     </div>
 
     <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab active" onclick="switchTab('automations')">Automations</button>
-      <button class="tab tab-builder" onclick="switchTab('builder')">+ Create Automation</button>
+    <div class="max-w-7xl mx-auto px-8 pb-0 flex gap-2">
+      <button class="tab active px-6 py-3 rounded-lg transition-all font-medium text-sm" onclick="switchTab('automations')">
+        Automazioni
+      </button>
+      <button class="tab px-6 py-3 rounded-lg bg-transparent border border-gray-600 text-text-secondary hover:bg-bg-card transition-all font-medium text-sm" onclick="switchTab('builder')">
+        + Crea Automazione
+      </button>
     </div>
 
     <!-- Automations Tab -->
-    <div class="tab-content active" id="tab-automations">
+    <div class="tab-content active max-w-7xl mx-auto px-8 py-6" id="tab-automations">
       <!-- Loading Indicator -->
-      <div class="loading-indicator" id="loading-indicator">
-        <div class="loading-spinner"></div>
-        <p>Loading your automations...</p>
+      <div class="loading-indicator flex flex-col items-center justify-center py-16 text-text-secondary" id="loading-indicator">
+        <div class="w-10 h-10 border-3 border-gray-600 border-t-accent-primary rounded-full animate-spin mb-4"></div>
+        <p>Caricamento automazioni...</p>
       </div>
 
       <!-- Main Content -->
       <main class="main">
-        <div class="automations-grid" id="automations-grid">
-          <!-- Loaded via JS -->
-        </div>
-        <div class="empty-state" id="empty-state">
-          <div class="empty-icon">🚀</div>
-          <h3>Get started with automations</h3>
-          <p>Automations help you run tasks automatically on your schedule. Create your first one to save time!</p>
-          <button class="btn btn-primary btn-large" onclick="switchTab('builder')">Create Your First Automation</button>
+        <div class="automations-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="automations-grid"></div>
+        
+        <div class="empty-state text-center py-16 bg-bg-card border-2 border-dashed border-gray-700 rounded-2xl" id="empty-state">
+          <div class="text-5xl mb-4">🚀</div>
+          <h3 class="text-xl font-semibold mb-2">Inizia con le automazioni</h3>
+          <p class="text-text-secondary mb-6 max-w-md mx-auto">Le automazioni ti permettono di eseguire task automaticamente. Crea la prima per risparmiare tempo!</p>
+          <button class="bg-accent-primary hover:bg-accent-hover text-white px-8 py-3 rounded-xl font-semibold transition-all hover:scale-105" onclick="switchTab('builder')">
+            Crea la Prima Automazione
+          </button>
         </div>
       </main>
     </div>
 
-    <!-- Visual Builder Tab - Step by Step -->
-    <div class="tab-content" id="tab-builder">
-      <div class="step-builder">
+    <!-- Visual Builder Tab -->
+    <div class="tab-content max-w-5xl mx-auto px-8 py-6" id="tab-builder">
+      <div class="bg-bg-card border border-gray-700 rounded-2xl overflow-hidden">
         
         <!-- Progress Bar -->
-        <div class="progress-bar">
-          <div class="progress-step active" data-step="1">
-            <div class="step-number">1</div>
-            <div class="step-label">Trigger</div>
+        <div class="flex items-center justify-center gap-2 py-8 bg-bg-elevated border-b border-gray-700">
+          <div class="flex items-center gap-2" data-step="1">
+            <div class="step-number w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm bg-accent-primary text-white">1</div>
+            <span class="text-sm font-medium">Trigger</span>
           </div>
-          <div class="progress-line"></div>
-          <div class="progress-step" data-step="2">
-            <div class="step-number">2</div>
-            <div class="step-label">Action</div>
+          <div class="w-16 h-0.5 bg-gray-600"></div>
+          <div class="flex items-center gap-2 opacity-50" data-step="2">
+            <div class="step-number w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm bg-gray-600 text-white">2</div>
+            <span class="text-sm font-medium">Azione</span>
           </div>
-          <div class="progress-line"></div>
-          <div class="progress-step" data-step="3">
-            <div class="step-number">3</div>
-            <div class="step-label">Review</div>
+          <div class="w-16 h-0.5 bg-gray-600"></div>
+          <div class="flex items-center gap-2 opacity-50" data-step="3">
+            <div class="step-number w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm bg-gray-600 text-white">3</div>
+            <span class="text-sm font-medium">Revisione</span>
           </div>
         </div>
 
         <!-- Step 1: Choose Trigger -->
-        <div class="builder-step active" id="step-1">
-          <h2 class="step-title">What should start your automation?</h2>
-          <p class="step-desc">Select an event or time that will trigger this automation</p>
+        <div class="builder-step p-8" id="step-1">
+          <h2 class="text-xl font-semibold mb-2">Cosa deve avviare l'automazione?</h2>
+          <p class="text-text-secondary mb-6">Seleziona un evento o un orario che attiverà questa automazione</p>
           
-          <div class="cards-grid">
-            <button class="choice-card" data-trigger="schedule" onclick="selectTrigger('schedule')">
-              <div class="card-icon">⏰</div>
-              <div class="card-title">Schedule</div>
-              <div class="card-desc">Run at a specific time</div>
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <button class="choice-card p-5 bg-bg-elevated border-2 border-gray-600 rounded-xl text-left hover:border-accent-primary hover:bg-bg-card transition-all" data-trigger="schedule" onclick="selectTrigger('schedule')">
+              <div class="text-2xl mb-2">⏰</div>
+              <div class="font-semibold">Schedule</div>
+              <div class="text-sm text-text-secondary">Esegui a un orario specifico</div>
             </button>
             
-            <button class="choice-card" data-trigger="webhook" onclick="selectTrigger('webhook')">
-              <div class="card-icon">🔗</div>
-              <div class="card-title">Webhook</div>
-              <div class="card-desc">HTTP endpoint trigger</div>
+            <button class="choice-card p-5 bg-bg-elevated border-2 border-gray-600 rounded-xl text-left hover:border-accent-webhook hover:bg-bg-card transition-all" data-trigger="webhook" onclick="selectTrigger('webhook')">
+              <div class="text-2xl mb-2">🔗</div>
+              <div class="font-semibold">HTTP Request</div>
+              <div class="text-sm text-text-secondary">Trigger via endpoint HTTP</div>
             </button>
             
-            <button class="choice-card" data-trigger="file_change" onclick="selectTrigger('file_change')">
-              <div class="card-icon">📁</div>
-              <div class="card-title">File Watch</div>
-              <div class="card-desc">When files change</div>
+            <button class="choice-card p-5 bg-bg-elevated border-2 border-gray-600 rounded-xl text-left hover:border-accent-event hover:bg-bg-card transition-all" data-trigger="file_change" onclick="selectTrigger('file_change')">
+              <div class="text-2xl mb-2">📁</div>
+              <div class="font-semibold">Monitora File</div>
+              <div class="text-sm text-text-secondary">Quando i file cambiano</div>
             </button>
             
-            <button class="choice-card" data-trigger="email" onclick="selectTrigger('email')">
-              <div class="card-icon">📧</div>
-              <div class="card-title">Email</div>
-              <div class="card-desc">When emails arrive</div>
+            <button class="choice-card p-5 bg-bg-elevated border-2 border-gray-600 rounded-xl text-left hover:border-blue-400 hover:bg-bg-card transition-all" data-trigger="email" onclick="selectTrigger('email')">
+              <div class="text-2xl mb-2">📧</div>
+              <div class="font-semibold">Email</div>
+              <div class="text-sm text-text-secondary">Quando arrivano email</div>
             </button>
             
-            <button class="choice-card" data-trigger="calendar" onclick="selectTrigger('calendar')">
-              <div class="card-icon">📅</div>
-              <div class="card-title">Calendar</div>
-              <div class="card-desc">Calendar events</div>
+            <button class="choice-card p-5 bg-bg-elevated border-2 border-gray-600 rounded-xl text-left hover:border-accent-event hover:bg-bg-card transition-all" data-trigger="calendar" onclick="selectTrigger('calendar')">
+              <div class="text-2xl mb-2">📅</div>
+              <div class="font-semibold">Calendario</div>
+              <div class="text-sm text-text-secondary">Eventi del calendario</div>
             </button>
             
-            <button class="choice-card" data-trigger="system" onclick="selectTrigger('system')">
-              <div class="card-icon">🖥️</div>
-              <div class="card-title">System</div>
-              <div class="card-desc">Resource monitoring</div>
+            <button class="choice-card p-5 bg-bg-elevated border-2 border-gray-600 rounded-xl text-left hover:border-accent-system hover:bg-bg-card transition-all" data-trigger="system" onclick="selectTrigger('system')">
+              <div class="text-2xl mb-2">🖥️</div>
+              <div class="font-semibold">Sistema</div>
+              <div class="text-sm text-text-secondary">Monitoraggio risorse</div>
             </button>
           </div>
           
-          <!-- Trigger Settings (shown after selection) -->
-          <div class="step-settings" id="trigger-settings" style="display:none">
-            <h3>Configure Trigger</h3>
-            <div class="trigger-config" data-trigger="schedule">
-              <div class="form-group">
-                <label>Schedule</label>
-                <select id="schedule-preset" onchange="updateSchedulePreset()">
-                  <option value="every-hour">Every hour</option>
-                  <option value="every-day-9am" selected>Every day at 9:00 AM</option>
-                  <option value="every-day-6pm">Every day at 6:00 PM</option>
-                  <option value="every-monday">Every Monday at 8:00 AM</option>
-                  <option value="every-weekday">Every weekday at 9:00 AM</option>
-                  <option value="every-month">First day of every month</option>
-                  <option value="every-minute">Every minute (testing)</option>
+          <!-- Trigger Settings -->
+          <div class="mt-6 p-5 bg-bg-elevated rounded-xl hidden" id="trigger-settings">
+            <h3 class="font-semibold mb-4">Configura Trigger</h3>
+            
+            <!-- Schedule Config -->
+            <div class="trigger-config space-y-4" data-trigger="schedule">
+              <div>
+                <label class="block text-sm font-medium mb-2">Programmazione</label>
+                <select id="schedule-preset" onchange="updateSchedulePreset()" class="w-full bg-bg-card border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-accent-primary">
+                  <option value="every-hour">Ogni ora</option>
+                  <option value="every-day-9am" selected>Ogni giorno alle 9:00</option>
+                  <option value="every-day-6pm">Ogni giorno alle 18:00</option>
+                  <option value="every-monday">Ogni Lunedì alle 8:00</option>
+                  <option value="every-weekday">Dal Lunedì al Venerdì alle 9:00</option>
+                  <option value="every-month">Primo giorno del mese</option>
+                  <option value="every-minute">Ogni minuto (test)</option>
                 </select>
               </div>
-              <div class="form-group" id="cron-group">
-                <label>Cron Expression</label>
-                <input type="text" id="cron" placeholder="0 9 * * *" value="0 9 * * *">
+              <div>
+                <label class="block text-sm font-medium mb-2">Espressione Cron</label>
+                <input type="text" id="cron" placeholder="0 9 * * *" value="0 9 * * *" class="w-full bg-bg-card border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-accent-primary">
               </div>
-              <p class="help-text" id="cron-preview">Runs: Every day at 9:00 AM</p>
+              <p class="text-sm text-text-secondary" id="cron-preview">Esecuzione: Ogni giorno alle 9:00</p>
             </div>
             
-            <div class="trigger-config" data-trigger="webhook" style="display:none">
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Port</label>
-                  <input type="number" id="webhook-port" value="18800">
+            <!-- Webhook Config -->
+            <div class="trigger-config space-y-4 hidden" data-trigger="webhook">
+              <div class="grid grid-cols-3 gap-4">
+                <div>
+                  <label class="block text-sm font-medium mb-2">Porta</label>
+                  <input type="number" id="webhook-port" value="18800" class="w-full bg-bg-card border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-accent-webhook">
                 </div>
-                <div class="form-group flex-1">
-                  <label>Endpoint</label>
-                  <input type="text" id="webhook-endpoint" value="/automation">
+                <div class="col-span-2">
+                  <label class="block text-sm font-medium mb-2">Endpoint</label>
+                  <input type="text" id="webhook-endpoint" value="/automation" class="w-full bg-bg-card border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-accent-webhook">
                 </div>
               </div>
-              <p class="help-text">POST to <code id="webhook-url">http://localhost:18800/automation</code></p>
+              <p class="text-sm text-text-secondary">Invia POST a <code class="bg-bg-card px-2 py-0.5 rounded" id="webhook-url">http://localhost:18800/automation</code></p>
             </div>
             
-            <div class="trigger-config" data-trigger="file_change" style="display:none">
-              <div class="form-group">
-                <label>Path to Watch</label>
-                <input type="text" id="watch-path" value="~/">
+            <!-- File Watch Config -->
+            <div class="trigger-config space-y-4 hidden" data-trigger="file_change">
+              <div>
+                <label class="block text-sm font-medium mb-2">Percorso da Monitorare</label>
+                <input type="text" id="watch-path" value="~/" class="w-full bg-bg-card border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-accent-event">
               </div>
-              <div class="form-group">
-                <label>Events to Watch</label>
-                <div class="checkbox-row">
-                  <label><input type="checkbox" id="event-modify" checked> Modify</label>
-                  <label><input type="checkbox" id="event-add" checked> Add</label>
-                  <label><input type="checkbox" id="event-delete"> Delete</label>
+              <div>
+                <label class="block text-sm font-medium mb-2">Eventi da Monitorare</label>
+                <div class="flex gap-4 text-sm">
+                  <label class="flex items-center gap-2"><input type="checkbox" id="event-modify" checked> Modifica</label>
+                  <label class="flex items-center gap-2"><input type="checkbox" id="event-add" checked> Aggiungi</label>
+                  <label class="flex items-center gap-2"><input type="checkbox" id="event-delete"> Elimina</label>
                 </div>
               </div>
             </div>
             
-            <div class="trigger-config" data-trigger="email" style="display:none">
-              <div class="form-row">
-                <div class="form-group">
-                  <label>IMAP Host</label>
-                  <input type="text" id="email-host" value="imap.gmail.com">
+            <!-- Email Config -->
+            <div class="trigger-config space-y-4 hidden" data-trigger="email">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium mb-2">Host IMAP</label>
+                  <input type="text" id="email-host" value="imap.gmail.com" class="w-full bg-bg-card border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-400">
                 </div>
-                <div class="form-group flex-1">
-                  <label>Email Address</label>
-                  <input type="email" id="email-user" placeholder="your@email.com">
+                <div>
+                  <label class="block text-sm font-medium mb-2">Indirizzo Email</label>
+                  <input type="email" id="email-user" placeholder="tua@email.com" class="w-full bg-bg-card border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-400">
                 </div>
               </div>
-              <div class="form-group">
-                <label>Check Every</label>
-                <select id="email-interval">
-                  <option value="30">30 seconds</option>
-                  <option value="60" selected>1 minute</option>
-                  <option value="300">5 minutes</option>
+              <div>
+                <label class="block text-sm font-medium mb-2">Controlla Ogni</label>
+                <select id="email-interval" class="w-full bg-bg-card border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-400">
+                  <option value="30">30 secondi</option>
+                  <option value="60" selected>1 minuto</option>
+                  <option value="300">5 minuti</option>
                 </select>
               </div>
             </div>
             
-            <div class="trigger-config" data-trigger="calendar" style="display:none">
-              <div class="form-group">
-                <label>Calendar Provider</label>
-                <select id="calendar-provider">
+            <!-- Calendar Config -->
+            <div class="trigger-config space-y-4 hidden" data-trigger="calendar">
+              <div>
+                <label class="block text-sm font-medium mb-2">Provider Calendario</label>
+                <select id="calendar-provider" class="w-full bg-bg-card border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-accent-event">
                   <option value="google">Google Calendar</option>
                   <option value="apple">Apple Calendar</option>
                 </select>
               </div>
-              <div class="form-group">
-                <label>Check Every</label>
-                <select id="calendar-interval">
-                  <option value="1">1 minute</option>
-                  <option value="5" selected>5 minutes</option>
-                  <option value="15">15 minutes</option>
+              <div>
+                <label class="block text-sm font-medium mb-2">Controlla Ogni</label>
+                <select id="calendar-interval" class="w-full bg-bg-card border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-accent-event">
+                  <option value="1">1 minuto</option>
+                  <option value="5" selected>5 minuti</option>
+                  <option value="15">15 minuti</option>
                 </select>
               </div>
             </div>
             
-            <div class="trigger-config" data-trigger="system" style="display:none">
-              <div class="form-row">
-                <div class="form-group">
-                  <label>CPU Alert (%)</label>
-                  <input type="number" id="sys-cpu" value="90" min="1" max="100">
+            <!-- System Config -->
+            <div class="trigger-config space-y-4 hidden" data-trigger="system">
+              <div class="grid grid-cols-3 gap-4">
+                <div>
+                  <label class="block text-sm font-medium mb-2">Allerta CPU (%)</label>
+                  <input type="number" id="sys-cpu" value="90" min="1" max="100" class="w-full bg-bg-card border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-accent-system">
                 </div>
-                <div class="form-group">
-                  <label>Memory Alert (%)</label>
-                  <input type="number" id="sys-mem" value="90" min="1" max="100">
+                <div>
+                  <label class="block text-sm font-medium mb-2">Allerta Memoria (%)</label>
+                  <input type="number" id="sys-mem" value="90" min="1" max="100" class="w-full bg-bg-card border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-accent-system">
                 </div>
-                <div class="form-group">
-                  <label>Disk Alert (%)</label>
-                  <input type="number" id="sys-disk" value="95" min="1" max="100">
+                <div>
+                  <label class="block text-sm font-medium mb-2">Allerta Disco (%)</label>
+                  <input type="number" id="sys-disk" value="95" min="1" max="100" class="w-full bg-bg-card border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-accent-system">
                 </div>
               </div>
             </div>
           </div>
           
-          <div class="step-actions">
-            <button class="btn btn-primary btn-large" onclick="goToStep(2)" id="btn-next-1" disabled>
-              Continue to Action →
+          <div class="mt-6">
+            <button class="bg-accent-primary hover:bg-accent-hover text-white px-8 py-3 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed" onclick="goToStep(2)" id="btn-next-1" disabled>
+              Continua con l'Azione →
             </button>
           </div>
         </div>
 
         <!-- Step 2: Choose Action -->
-        <div class="builder-step" id="step-2">
-          <h2 class="step-title">What should happen next?</h2>
-          <p class="step-desc">Select the action to perform when the trigger fires</p>
+        <div class="builder-step p-8 hidden" id="step-2">
+          <h2 class="text-xl font-semibold mb-2">Cosa deve succedere?</h2>
+          <p class="text-text-secondary mb-6">Seleziona l'azione da eseguire quando il trigger si attiva</p>
           
-          <div class="cards-grid">
-            <button class="choice-card" data-action="shell" onclick="selectAction('shell')">
-              <div class="card-icon">💻</div>
-              <div class="card-title">Run Command</div>
-              <div class="card-desc">Execute a terminal command</div>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <button class="choice-card p-5 bg-bg-elevated border-2 border-gray-600 rounded-xl text-left hover:border-accent-primary hover:bg-bg-card transition-all" data-action="shell" onclick="selectAction('shell')">
+              <div class="text-2xl mb-2">💻</div>
+              <div class="font-semibold">Esegui Comando</div>
+              <div class="text-sm text-text-secondary">Esegui un comando nel terminale</div>
             </button>
             
-            <button class="choice-card" data-action="agent" onclick="selectAction('agent')">
-              <div class="card-icon">🤖</div>
-              <div class="card-title">AI Agent</div>
-              <div class="card-desc">Run an AI task</div>
+            <button class="choice-card p-5 bg-bg-elevated border-2 border-gray-600 rounded-xl text-left hover:border-accent-primary hover:bg-bg-card transition-all" data-action="agent" onclick="selectAction('agent')">
+              <div class="text-2xl mb-2">🤖</div>
+              <div class="font-semibold">Assistente AI</div>
+              <div class="text-sm text-text-secondary">Esegui un task con intelligenza artificiale</div>
             </button>
             
-            <button class="choice-card" data-action="git" onclick="selectAction('git')">
-              <div class="card-icon">🔀</div>
-              <div class="card-title">Git</div>
-              <div class="card-desc">Auto-commit & push</div>
+            <button class="choice-card p-5 bg-bg-elevated border-2 border-gray-600 rounded-xl text-left hover:border-orange-500 hover:bg-bg-card transition-all" data-action="git" onclick="selectAction('git')">
+              <div class="text-2xl mb-2">🔀</div>
+              <div class="font-semibold">Git</div>
+              <div class="text-sm text-text-secondary">Commit e push automatico</div>
             </button>
             
-            <button class="choice-card" data-action="notify" onclick="selectAction('notify')">
-              <div class="card-icon">📱</div>
-              <div class="card-title">Notify</div>
-              <div class="card-desc">Send a notification</div>
+            <button class="choice-card p-5 bg-bg-elevated border-2 border-gray-600 rounded-xl text-left hover:border-green-500 hover:bg-bg-card transition-all" data-action="notify" onclick="selectAction('notify')">
+              <div class="text-2xl mb-2">📱</div>
+              <div class="font-semibold">Notifica</div>
+              <div class="text-sm text-text-secondary">Invia una notifica</div>
             </button>
             
-            <button class="choice-card" data-action="email_reply" onclick="selectAction('email_reply')">
-              <div class="card-icon">📧</div>
-              <div class="card-title">Email Reply</div>
-              <div class="card-desc">Send an email</div>
+            <button class="choice-card p-5 bg-bg-elevated border-2 border-gray-600 rounded-xl text-left hover:border-blue-400 hover:bg-bg-card transition-all" data-action="email_reply" onclick="selectAction('email_reply')">
+              <div class="text-2xl mb-2">📧</div>
+              <div class="font-semibold">Risposta Email</div>
+              <div class="text-sm text-text-secondary">Invia una email automatica</div>
             </button>
           </div>
           
-          <!-- Action Settings (shown after selection) -->
-          <div class="step-settings" id="action-settings" style="display:none">
-            <h3>Configure Action</h3>
+          <!-- Action Settings -->
+          <div class="mt-6 p-5 bg-bg-elevated rounded-xl hidden" id="action-settings">
+            <h3 class="font-semibold mb-4">Configura Azione</h3>
             
-            <div class="action-config" data-action="shell" style="display:none">
-              <div class="form-group">
-                <label>Command to Run</label>
-                <input type="text" id="shell-command" placeholder="e.g., npm run build, python backup.py">
+            <!-- Shell Command -->
+            <div class="action-config space-y-4 hidden" data-action="shell">
+              <div>
+                <label class="block text-sm font-medium mb-2">Comando da Eseguire</label>
+                <input type="text" id="shell-command" placeholder="es. npm run build, python backup.py" class="w-full bg-bg-card border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-accent-primary">
+                <p class="text-xs text-text-secondary mt-2">💡 Esempi: <code class="bg-bg-card px-1 rounded">npm test</code>, <code class="bg-bg-card px-1 rounded">python script.py</code>, <code class="bg-bg-card px-1 rounded">rsync -avz /src /dest</code></p>
               </div>
             </div>
             
-            <div class="action-config" data-action="agent" style="display:none">
-              <div class="form-group">
-                <label>Task Description</label>
-                <textarea id="agent-prompt" rows="3" placeholder="What should the AI do?"></textarea>
+            <!-- AI Agent -->
+            <div class="action-config space-y-4 hidden" data-action="agent">
+              <div>
+                <label class="block text-sm font-medium mb-2">Descrizione del Task</label>
+                <textarea id="agent-prompt" rows="3" placeholder="Cosa deve fare l'AI?" class="w-full bg-bg-card border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-accent-primary resize-none"></textarea>
+                <p class="text-xs text-text-secondary mt-2">Descrivi in linguaggio naturale cosa vuoi che l'AI faccia per te.</p>
               </div>
-              <div class="form-group">
-                <label>AI Model</label>
-                <select id="agent-model">
-                  <option value="claude-opus-4-5">Claude Opus 4</option>
-                  <option value="claude-sonnet-4">Claude Sonnet 4</option>
-                  <option value="gpt-4">GPT-4</option>
+              <div>
+                <label class="block text-sm font-medium mb-2">Modello AI</label>
+                <select id="agent-model" class="w-full bg-bg-card border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-accent-primary">
+                  <option value="claude-opus-4-5">Claude Opus 4 (Più potente)</option>
+                  <option value="claude-sonnet-4">Claude Sonnet 4 (Bilanciato)</option>
+                  <option value="gpt-4">GPT-4 (Standard)</option>
                 </select>
               </div>
             </div>
             
-            <div class="action-config" data-action="git" style="display:none">
-              <div class="form-group">
-                <label>Repository Path</label>
-                <input type="text" id="git-path" placeholder="~/Projects/my-repo">
+            <!-- Git -->
+            <div class="action-config space-y-4 hidden" data-action="git">
+              <div>
+                <label class="block text-sm font-medium mb-2">Percorso Repository</label>
+                <input type="text" id="git-path" placeholder="~/Projects/my-repo" class="w-full bg-bg-card border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-orange-500">
               </div>
-              <div class="checkbox-row">
-                <label><input type="checkbox" id="git-add" checked> git add .</label>
-                <label><input type="checkbox" id="git-commit" checked> Auto-commit</label>
-                <label><input type="checkbox" id="git-push" checked> Auto-push</label>
+              <div class="flex gap-4 text-sm">
+                <label class="flex items-center gap-2"><input type="checkbox" id="git-add" checked> git add .</label>
+                <label class="flex items-center gap-2"><input type="checkbox" id="git-commit" checked> Commit automatico</label>
+                <label class="flex items-center gap-2"><input type="checkbox" id="git-push" checked> Push automatico</label>
               </div>
             </div>
             
-            <div class="action-config" data-action="notify" style="display:none">
-              <div class="form-group">
-                <label>Channel</label>
-                <select id="notify-channel">
+            <!-- Notify -->
+            <div class="action-config space-y-4 hidden" data-action="notify">
+              <div>
+                <label class="block text-sm font-medium mb-2">Canale</label>
+                <select id="notify-channel" class="w-full bg-bg-card border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-green-500">
                   <option value="telegram">Telegram</option>
                   <option value="slack">Slack</option>
                   <option value="discord">Discord</option>
                 </select>
               </div>
-              <div class="form-group">
-                <label>Message</label>
-                <textarea id="notify-message" rows="2" placeholder="Your notification message"></textarea>
+              <div>
+                <label class="block text-sm font-medium mb-2">Messaggio</label>
+                <textarea id="notify-message" rows="2" placeholder="Il tuo messaggio di notifica" class="w-full bg-bg-card border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-green-500 resize-none"></textarea>
               </div>
             </div>
             
-            <div class="action-config" data-action="email_reply" style="display:none">
-              <div class="form-group">
-                <label>Subject</label>
-                <input type="text" id="email-subject" placeholder="Re: Your email">
+            <!-- Email Reply -->
+            <div class="action-config space-y-4 hidden" data-action="email_reply">
+              <div>
+                <label class="block text-sm font-medium mb-2">Oggetto</label>
+                <input type="text" id="email-subject" placeholder="Re: La tua email" class="w-full bg-bg-card border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-400">
               </div>
-              <div class="form-group">
-                <label>Message</label>
-                <textarea id="email-body" rows="4" placeholder="Your auto-reply message"></textarea>
+              <div>
+                <label class="block text-sm font-medium mb-2">Messaggio</label>
+                <textarea id="email-body" rows="4" placeholder="Il tuo messaggio di risposta automatica" class="w-full bg-bg-card border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-blue-400 resize-none"></textarea>
               </div>
             </div>
           </div>
           
-          <div class="step-actions">
-            <button class="btn btn-secondary btn-large" onclick="goToStep(1)">
-              ← Back
+          <div class="mt-6 flex gap-4">
+            <button class="bg-transparent border border-gray-600 hover:border-gray-500 px-8 py-3 rounded-xl font-semibold transition-all" onclick="goToStep(1)">
+              ← Indietro
             </button>
-            <button class="btn btn-primary btn-large" onclick="goToStep(3)" id="btn-next-2" disabled>
-              Review & Save →
+            <button class="bg-accent-primary hover:bg-accent-hover text-white px-8 py-3 rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed" onclick="goToStep(3)" id="btn-next-2" disabled>
+              Revisione e Salva →
             </button>
           </div>
         </div>
 
         <!-- Step 3: Review & Save -->
-        <div class="builder-step" id="step-3">
-          <h2 class="step-title">Review your automation</h2>
-          <p class="step-desc">Give your automation a name and save it</p>
+        <div class="builder-step p-8 hidden" id="step-3">
+          <h2 class="text-xl font-semibold mb-2">Rivedi la tua automazione</h2>
+          <p class="text-text-secondary mb-6">Dai un nome alla tua automazione e salvala</p>
           
           <!-- Summary Card -->
-          <div class="summary-card">
-            <div class="summary-row">
-              <span class="summary-label">Trigger</span>
-              <span class="summary-value" id="summary-trigger">-</span>
+          <div class="bg-bg-elevated rounded-xl p-5 mb-6">
+            <div class="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <span class="text-sm text-text-secondary">Trigger</span>
+                <div class="font-semibold text-lg" id="summary-trigger">-</div>
+              </div>
+              <div>
+                <span class="text-sm text-text-secondary">Azione</span>
+                <div class="font-semibold text-lg" id="summary-action">-</div>
+              </div>
             </div>
-            <div class="summary-row">
-              <span class="summary-label">Action</span>
-              <span class="summary-value" id="summary-action">-</span>
-            </div>
-            <div class="summary-row summary-name">
-              <span class="summary-label">Name</span>
-              <input type="text" id="automation-name" class="summary-input" placeholder="e.g., Daily backup at 9AM">
+            <div>
+              <label class="block text-sm text-text-secondary mb-2">Nome Automazione</label>
+              <input type="text" id="automation-name" placeholder="es. Backup giornaliero alle 9" class="w-full bg-bg-card border border-gray-600 rounded-lg px-4 py-2.5 focus:outline-none focus:border-accent-primary">
             </div>
           </div>
           
-          <div class="step-actions">
-            <button class="btn btn-secondary btn-large" onclick="goToStep(2)">
-              ← Back
+          <div class="flex gap-4">
+            <button class="bg-transparent border border-gray-600 hover:border-gray-500 px-8 py-3 rounded-xl font-semibold transition-all" onclick="goToStep(2)">
+              ← Indietro
             </button>
-            <button class="btn btn-primary btn-large btn-save" onclick="saveAutomationFromBuilder()">
-              ✓ Save Automation
+            <button class="bg-green-600 hover:bg-green-500 text-white px-8 py-3 rounded-xl font-semibold transition-all flex items-center gap-2" onclick="saveAutomationFromBuilder()">
+              ✓ Salva Automazione
             </button>
           </div>
         </div>
@@ -387,31 +445,33 @@
     </div>
 
     <!-- Activity Feed -->
-    <section class="logs-section">
-      <div class="section-header">
-        <h2>Activity Feed</h2>
+    <section class="logs-section max-w-7xl mx-auto px-8 pb-8">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-semibold">Attività Recente</h2>
       </div>
-      <div class="logs-list" id="activity-feed">
-        <div class="log-item log-info">Dashboard connected - Waiting for updates...</div>
+      <div class="bg-bg-card border border-gray-700 rounded-xl overflow-hidden">
+        <div class="logs-list max-h-64 overflow-y-auto p-4 font-mono text-sm" id="activity-feed">
+          <div class="log-item bg-blue-500/10 text-blue-400 px-3 py-2 rounded mb-1">Dashboard connessa - In attesa di aggiornamenti...</div>
+        </div>
       </div>
     </section>
   </div>
 
   <!-- Toast -->
-  <div class="toast-container" id="toast-container"></div>
+  <div class="toast-container fixed bottom-6 right-6 z-50 flex flex-col gap-3 max-w-md" id="toast-container"></div>
 
-  <!-- Delete Confirmation Modal -->
-  <div class="modal-overlay" id="delete-modal-overlay" onclick="closeDeleteModal()"></div>
-  <div class="modal modal-delete" id="delete-modal">
-    <div class="modal-header">
-      <h2>Delete Automation</h2>
-      <button class="modal-close" onclick="closeDeleteModal()">×</button>
+  <!-- Delete Modal -->
+  <div class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] opacity-0 invisible transition-all" id="delete-modal-overlay" onclick="closeDeleteModal()"></div>
+  <div class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-bg-secondary border border-gray-700 rounded-2xl w-[90%] max-w-lg z-[61] opacity-0 invisible transition-all" id="delete-modal">
+    <div class="flex justify-between items-center p-5 border-b border-gray-700">
+      <h2 class="text-lg font-semibold">Elimina Automazione</h2>
+      <button class="text-2xl text-text-secondary hover:text-white leading-none" onclick="closeDeleteModal()">×</button>
     </div>
-    <div class="modal-body">
-      <p class="delete-message" id="delete-message">Are you sure you want to delete this automation? This action cannot be undone.</p>
-      <div class="delete-actions">
-        <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
-        <button class="btn btn-danger" id="confirm-delete-btn">Delete</button>
+    <div class="p-8 text-center">
+      <p class="text-text-secondary mb-6" id="delete-message">Sei sicuro di voler eliminare questa automazione? L'azione non può essere annullata.</p>
+      <div class="flex gap-4 justify-center">
+        <button class="bg-transparent border border-gray-600 hover:border-gray-500 px-6 py-2 rounded-lg font-medium transition-all" onclick="closeDeleteModal()">Annulla</button>
+        <button class="bg-red-600 hover:bg-red-500 text-white px-6 py-2 rounded-lg font-medium transition-all" id="confirm-delete-btn">Elimina</button>
       </div>
     </div>
   </div>
