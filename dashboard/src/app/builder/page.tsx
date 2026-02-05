@@ -305,7 +305,7 @@ function BuilderContent() {
     setNodes((nds) => {
       const updatedNodes = [...nds]
       for (const change of changes) {
-        if (change.type === "position" && change.position && !change. dragging) {
+        if (change.type === "position" && change.position) {
           const nodeIndex = updatedNodes.findIndex(n => n.id === change.id)
           if (nodeIndex !== -1) {
             updatedNodes[nodeIndex] = { ...updatedNodes[nodeIndex], position: change.position }
@@ -360,7 +360,8 @@ function BuilderContent() {
     const cron = generateCronFromSchedule()
     const config = { 
       cron, frequency: scheduleFreq, time: scheduleTime, 
-      dayOfWeek: scheduleDayOfWeek, dayOfMonth: scheduleDayOfMonth 
+      dayOfWeek: scheduleDayOfWeek, dayOfMonth: scheduleDayOfMonth,
+      sublabel: `Cron: ${cron}`
     }
     
     setNodes((nds) => nds.map((n) => n.id === selectedNode.id ? { ...n, data: { ...n.data, ...config } } : n))
@@ -397,6 +398,14 @@ function BuilderContent() {
     if (edges.length === 0) {
       toast.error("Connetti Trigger e Azione")
       return
+    }
+
+    // Make sure selected node changes are applied to nodes array
+    if (selectedNode) {
+      const config = Object.fromEntries(
+        Object.entries(selectedNode.data).filter(([k]) => !["type", "label", "sublabel"].includes(k))
+      )
+      setNodes((nds) => nds.map((n) => n.id === selectedNode.id ? { ...n, data: { ...n.data, ...config } } : n))
     }
 
     setIsSaving(true)
