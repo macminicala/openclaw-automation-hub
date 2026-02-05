@@ -1,16 +1,17 @@
 {
   "name": "openclaw-automation-hub",
-  "version": "0.4.0",
-  "description": "AI-native automation engine for OpenClaw. v0.4 adds Visual Workflow Builder and Real-time Dashboard.",
+  "version": "1.0.0",
+  "description": "AI-native automation engine for OpenClaw. v1.0 adds Next.js Dashboard with shadcn/ui.",
   "main": "src/engine.js",
   "bin": {
     "automation-hub": "cli/main.js",
-    "automation-dashboard": "dashboard/server.js"
+    "automation-dashboard": "dashboard/package.json"
   },
   "scripts": {
     "start": "node src/engine.js",
     "cli": "node cli/main.js",
-    "dashboard": "node dashboard/server.js",
+    "dashboard": "cd dashboard && npm run dev",
+    "dashboard:build": "cd dashboard && npm run build",
     "test": "node test/run.js"
   },
   "keywords": [
@@ -20,7 +21,8 @@
     "visual-builder",
     "dashboard",
     "ai",
-    "local"
+    "local",
+    "nextjs"
   ],
   "license": "MIT",
   "dependencies": {

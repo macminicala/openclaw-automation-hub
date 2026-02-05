@@ -132,10 +132,11 @@ cmd_dashboard() {
     check_skill_dir
     log "Starting Dashboard..."
     echo ""
-    echo -e "${GREEN}🌐 Dashboard: http://localhost:18799${NC}"
+    echo -e "${GREEN}🌐 Dashboard: http://localhost:3000${NC}"
+    echo -e "${YELLOW}💡 API: http://localhost:18799${NC}"
     echo ""
-    cd "$SKILL_DIR"
-    node dashboard/server.js
+    cd "$SKILL_DIR/dashboard"
+    npm run dev
 }
 
 cmd_status() {
