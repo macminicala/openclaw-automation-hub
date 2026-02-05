@@ -34,8 +34,10 @@ export default function Dashboard() {
       const response = await fetch(`${API_URL}/automations`)
       if (response.ok) {
         const data = await response.json()
+        // API returns { automations: {...}, stats: {...} } - convert to array
+        const automationsList = data.automations ? Object.values(data.automations) : []
         // Mappa i dati dell'API al formato del frontend
-        const mapped: Automation[] = data.map((auto: any) => ({
+        const mapped: Automation[] = automationsList.map((auto: any) => ({
           id: auto.id,
           name: auto.name,
           trigger: auto.trigger.type,
