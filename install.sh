@@ -154,50 +154,64 @@ cmd_dashboard() {
 
 cmd_start() {
     check_skill_dir
-    log "Starting Automation Hub servers..."
+    log "Starting Automation Hub..."
     cd "$SKILL_DIR"
     
-    # Start API
+    # Start API in background
     if lsof -i :18799 >/dev/null 2>&1; then
         warn "API already running on port 18799"
     else
-        node api-server.js > /tmp/automation-api.log 2>&1 &
-        echo $! > /tmp/automation-api.pid
-        success "API started (port 18799)"
+        nohup node api-server.js > /tmp/automation-api.log 2>&1 &
+        sleep 1
+        if lsof -i :18799 >/dev/null 2>&1; then
+            success "API started (port 18799)"
+        else
+            error "Failed to start API"
+        fi
     fi
     
-    # Start Dashboard
+    # Start Dashboard in background
     if lsof -i :3000 >/dev/null 2>&1; then
         warn "Dashboard already running on port 3000"
     else
         cd "$SKILL_DIR/dashboard"
-        npm run dev > /tmp/automation-dashboard.log 2>&1 &
-        echo $! > /tmp/automation-dashboard.pid
-        success "Dashboard started (port 3000)"
+        nohup npm run dev > /tmp/automation-dashboard.log 2>&1 &
+        sleep 3
+        if lsof -i :3000 >/dev/null 2>&1; then
+            success "Dashboard started (port 3000)"
+        else
+            error "Failed to start Dashboard"
+        fi
     fi
     
     echo ""
-    echo -e "${GREEN}✅ Automation Hub running!${NC}"
-    echo "   🌐 http://localhost:3000"
-    echo "   🔌 http://localhost:18799"
+    echo -e "${GREEN}✅ Automation Hub is running!${NC}"
+    echo ""
+    echo "   🌐 http://localhost:3000 - Dashboard"
+    echo "   🔌 http://localhost:18799 - API"
     echo ""
     echo "To stop: automationhub stop"
 }
 
 cmd_stop() {
     log "Stopping Automation Hub..."
-    if [ -f /tmp/automation-api.pid ]; then
-        kill $(cat /tmp/automation-api.pid) 2>/dev/null
-        rm /tmp/automation-api.pid
+    
+    # Kill API
+    if lsof -i :18799 >/dev/null 2>&1; then
+        kill $(lsof -ti :18799) 2>/dev/null
+        sleep 1
         success "API stopped"
+    else
+        warn "API not running"
     fi
-    if [ -f /tmp/automation-dashboard.pid ]; then
-        kill $(cat /tmp/automation-dashboard.pid) 2>/dev/null
-        rm /tmp/automation-dashboard.pid
+    
+    # Kill Dashboard
+    if lsof -i :3000 >/dev/null 2>&1; then
+        kill $(lsof -ti :3000) 2>/dev/null
+        sleep 1
         success "Dashboard stopped"
-    fi
-    if ! lsof -i :18799 >/dev/null 2>&1 && ! lsof -i :3000 >/dev/null 2>&1; then
-        warn "No servers were running"
+    else
+        warn "Dashboard not running"
     fi
 }
 
