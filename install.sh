@@ -109,11 +109,11 @@ check_skill_dir() {
 
 # Check if process is running by exact PID file or pgrep
 is_api_running() {
-    pgrep -f "node.*api-server.js" >/dev/null 2>&1
+    pgrep -f "api-server.js" >/dev/null 2>&1
 }
 
 is_dashboard_running() {
-    pgrep -f "next.*dev" >/dev/null 2>&1
+    pgrep -f "next" >/dev/null 2>&1
 }
 
 cmd_install() {
@@ -159,7 +159,7 @@ cmd_dashboard() {
         stop)
             log "Stopping Dashboard..."
             if is_dashboard_running; then
-                PIDS=$(pgrep -f "next.*dev" 2>/dev/null)
+                PIDS=$(pgrep -f "next" 2>/dev/null)
                 if [ -n "$PIDS" ]; then
                     echo "$PIDS" | xargs kill -9 2>/dev/null
                     rm -f /tmp/automation-dashboard.pid
@@ -175,7 +175,7 @@ cmd_dashboard() {
             ;;
         status|*)
             if is_dashboard_running; then
-                PID=$(pgrep -f "next.*dev" 2>/dev/null | head -1)
+                PID=$(pgrep -f "next" 2>/dev/null | head -1)
                 echo -e "🌐 Dashboard: ${GREEN}Running${NC} (port 3000)"
                 [ -n "$PID" ] && echo "   PID: $PID"
             else
@@ -210,7 +210,7 @@ cmd_api() {
         stop)
             log "Stopping API..."
             if is_api_running; then
-                PIDS=$(pgrep -f "node.*api-server.js" 2>/dev/null)
+                PIDS=$(pgrep -f "api-server.js" 2>/dev/null)
                 if [ -n "$PIDS" ]; then
                     echo "$PIDS" | xargs kill -9 2>/dev/null
                     rm -f /tmp/automation-api.pid
@@ -226,7 +226,7 @@ cmd_api() {
             ;;
         status|*)
             if is_api_running; then
-                PID=$(pgrep -f "node.*api-server.js" 2>/dev/null | head -1)
+                PID=$(pgrep -f "api-server.js" 2>/dev/null | head -1)
                 echo -e "🔌 API: ${GREEN}Running${NC} (port 18799)"
                 [ -n "$PID" ] && echo "   PID: $PID"
             else
