@@ -13,7 +13,6 @@ GITHUB_REPO="https://github.com/macminicala/openclaw-automation-hub.git"
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 MAGENTA='\033[0;35m'
 NC='\033[0m'
@@ -36,15 +35,15 @@ install() {
         cd "$SKILL_DIR"
         git pull origin main 2>/dev/null || warn "Could not update"
     fi
-    
+
     # Install dependencies (once)
     log "Installing dependencies..."
     cd "$SKILL_DIR"
     npm install 2>/dev/null || npm install
-    
+
     # Create demo automations
     mkdir -p "$HOME/.openclaw/automations"
-    
+
     cat > "$HOME/.openclaw/automations/morning-briefing.json" << 'EOF'
 {
   "id": "morning-briefing",
@@ -54,7 +53,7 @@ install() {
   "actions": [{ "type": "shell", "command": "echo '☀️ Good morning!'" }]
 }
 EOF
-    
+
     cat > "$HOME/.openclaw/automations/webhook-test.json" << 'EOF'
 {
   "id": "webhook-test",
@@ -64,7 +63,7 @@ EOF
   "actions": [{ "type": "shell", "command": "echo '🔗 Webhook triggered'" }]
 }
 EOF
-    
+
     # Create command
     mkdir -p "$BIN_DIR"
     cat > "$BIN_DIR/automationhub" << 'CMDCAT'
@@ -73,12 +72,6 @@ EOF
 
 SKILL_DIR="$HOME/.clawd/skills/automation-hub"
 AUTOMATIONS_DIR="$HOME/.openclaw/automations"
-
-# Use full path for lsof
-LSOF="/usr/sbin/lsof"
-if [ ! -x "$LSOF" ]; then
-    LSOF="lsof"
-fi
 
 # Colors
 RED='\033[0;31m'
@@ -93,19 +86,14 @@ success() { echo -e "${GREEN}✅ $1${NC}"; }
 warn() { echo -e "${YELLOW}⚠️  $1${NC}"; }
 error() { echo -e "${RED}❌ $1${NC}"; exit 1; }
 
-# Check if port is in use
-port_in_use() {
-    local port=$1
-    if $LSOF -i :$port >/dev/null 2>&1; then
-        return 0
+# Check if process is running by PID file
+is_running() {
+    local pidfile=$1
+    if [ -f "$pidfile" ]; then
+        kill -0 "$(cat "$pidfile")" 2>/dev/null
+        return $?
     fi
     return 1
-}
-
-# Get PID from port
-pid_from_port() {
-    local port=$1
-    $LSOF -ti :$port 2>/dev/null
 }
 
 show_help() {
@@ -151,17 +139,19 @@ cmd_list() {
 cmd_dashboard() {
     check_skill_dir
     local action="${2:-status}"
-    
+    local pidfile="/tmp/automation-dashboard.pid"
+
     case "$action" in
         start)
             log "Starting Dashboard..."
-            if port_in_use 3000; then
+            if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
                 warn "Dashboard already running"
             else
                 cd "$SKILL_DIR/dashboard"
                 nohup npm run dev > /tmp/automation-dashboard.log 2>&1 &
+                echo $! > "$pidfile"
                 sleep 3
-                if port_in_use 3000; then
+                if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
                     success "Dashboard started on port 3000"
                 else
                     error "Failed to start Dashboard"
@@ -170,21 +160,21 @@ cmd_dashboard() {
             ;;
         stop)
             log "Stopping Dashboard..."
-            if port_in_use 3000; then
-                PID=$(pid_from_port 3000)
-                if [ -n "$PID" ]; then
-                    kill $PID 2>/dev/null
-                    sleep 1
+            if [ -f "$pidfile" ]; then
+                PID=$(cat "$pidfile")
+                if kill "$PID" 2>/dev/null; then
+                    rm -f "$pidfile"
                     success "Dashboard stopped"
                 else
-                    warn "Could not find Dashboard process"
+                    warn "Could not stop Dashboard"
+                    rm -f "$pidfile"
                 fi
             else
                 warn "Dashboard not running"
             fi
             ;;
         status|*)
-            if port_in_use 3000; then
+            if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
                 echo -e "🌐 Dashboard: ${GREEN}Running${NC} (port 3000)"
             else
                 echo -e "🌐 Dashboard: ${RED}Stopped${NC}"
@@ -196,17 +186,19 @@ cmd_dashboard() {
 cmd_api() {
     check_skill_dir
     local action="${2:-status}"
-    
+    local pidfile="/tmp/automation-api.pid"
+
     case "$action" in
         start)
             log "Starting API Server..."
-            if port_in_use 18799; then
+            if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
                 warn "API already running"
             else
                 cd "$SKILL_DIR"
                 nohup node api-server.js > /tmp/automation-api.log 2>&1 &
+                echo $! > "$pidfile"
                 sleep 1
-                if port_in_use 18799; then
+                if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
                     success "API started on port 18799"
                 else
                     error "Failed to start API"
@@ -215,21 +207,21 @@ cmd_api() {
             ;;
         stop)
             log "Stopping API..."
-            if port_in_use 18799; then
-                PID=$(pid_from_port 18799)
-                if [ -n "$PID" ]; then
-                    kill $PID 2>/dev/null
-                    sleep 1
+            if [ -f "$pidfile" ]; then
+                PID=$(cat "$pidfile")
+                if kill "$PID" 2>/dev/null; then
+                    rm -f "$pidfile"
                     success "API stopped"
                 else
-                    warn "Could not find API process"
+                    warn "Could not stop API"
+                    rm -f "$pidfile"
                 fi
             else
                 warn "API not running"
             fi
             ;;
         status|*)
-            if port_in_use 18799; then
+            if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
                 echo -e "🔌 API: ${GREEN}Running${NC} (port 18799)"
             else
                 echo -e "🔌 API: ${RED}Stopped${NC}"
@@ -238,75 +230,49 @@ cmd_api() {
     esac
 }
 
+cmd_start() {
+    cmd_api start
+    cmd_dashboard start
+}
 
-
-cmd_status() {
-    echo ""
-    echo -e "${MAGENTA}⚡ Automation Hub Status${NC}"
-    echo ""
-    
-    API_RUNNING=false
-    DASH_RUNNING=false
-    
-    if lsof -i :18799 >/dev/null 2>&1; then
-        API_RUNNING=true
-        echo -e "🔌 API:       ${GREEN}Running${NC} (port 18799)"
-    else
-        echo -e "🔌 API:       ${RED}Stopped${NC}"
-    fi
-    
-    if lsof -i :3000 >/dev/null 2>&1; then
-        DASH_RUNNING=true
-        echo -e "🌐 Dashboard: ${GREEN}Running${NC} (port 3000)"
-    else
-        echo -e "🌐 Dashboard: ${RED}Stopped${NC}"
-    fi
-    
-    echo ""
-    
-    TOTAL=$(ls -1 ~/.openclaw/automations/*.json 2>/dev/null | wc -l || echo 0)
-    echo -e "📊 Total automations: $TOTAL"
-    
-    if [ "$API_RUNNING" = true ]; then
-        echo ""
-        echo "Quick links:"
-        echo "   🌐 http://localhost:3000 - Dashboard"
-        echo "   🔌 http://localhost:18799/api/automations - API"
-    fi
+cmd_stop() {
+    cmd_dashboard stop
+    cmd_api stop
 }
 
 cmd_status() {
+    cmd_api status
+    cmd_dashboard status
+
     TOTAL=$(ls -1 ~/.openclaw/automations/*.json 2>/dev/null | wc -l || echo 0)
     echo ""
-    echo -e "${MAGENTA}⚡ Automation Hub${NC}"
-    echo ""
-    echo "Total automations: $TOTAL"
-    echo ""
+    echo "📊 Total automations: $TOTAL"
 }
 
 case "$1" in
     install|setup) cmd_install ;;
-    start) cmd_api start; cmd_dashboard start ;;
-    stop) cmd_dashboard stop; cmd_api stop ;;
-    dashboard) cmd_dashboard "${2:-start}" ;;
-    api) cmd_api "${2:-start}" ;;
-    status) 
-        cmd_api status
-        cmd_dashboard status
-        ;;
+    start) cmd_start ;;
+    stop) cmd_stop ;;
+    dashboard) cmd_dashboard "${2:-status}" ;;
+    api) cmd_api "${2:-status}" ;;
+    status) cmd_status ;;
+    list|ls) cmd_list ;;
+    help|--help|-h|"") show_help ;;
     *) cmd_list ;;
 esac
 CMDCAT
     chmod +x "$BIN_DIR/automationhub"
-    
+
     # Add to PATH
     if ! grep -q 'automationhub' ~/.zshrc 2>/dev/null; then
         echo 'export PATH="$HOME/.clawd/bin:$PATH"' >> ~/.zshrc
     fi
-    
+
     source ~/.zshrc 2>/dev/null || true
-    
+
     success "Automation Hub installed!"
+    echo ""
+    echo "🌐 Run 'automationhub start' to begin!"
 }
 
 # Run tests
@@ -315,37 +281,16 @@ test() {
     npm test
 }
 
-# Show status
-status() {
-    echo ""
-    echo -e "${MAGENTA}⚡ Automation Hub Status${NC}"
-    echo ""
-    echo -e "📁 $SKILL_DIR"
-    echo -e "📋 ~/.openclaw/automations/"
-    
-    TOTAL=$(ls -1 ~/.openclaw/automations/*.json 2>/dev/null | wc -l || echo 0)
-    echo -e "📊 Total automations: $TOTAL"
-    
-    ENABLED=$(grep -l '"enabled": true' ~/.openclaw/automations/*.json 2>/dev/null | wc -l || echo 0)
-    echo -e "🟢 Enabled: $ENABLED"
-    
-    echo ""
-}
-
 # Main
 case "$1" in
     test|--test|-t)
         test
         ;;
-    status|--status|-s)
-        status
-        ;;
     install|--install|-i|"")
         install
         echo ""
         echo -e "${GREEN}🚀 Quick start:${NC}"
-        echo "   automationhub status"
-        echo "   automationhub dashboard"
+        echo "   automationhub start"
         echo ""
         ;;
     help|--help|-h|"")
@@ -355,8 +300,8 @@ case "$1" in
         echo "Usage: curl -fsSL https://raw.githubusercontent.com/macminicala/openclaw-automation-hub/main/install.sh | bash"
         echo ""
         echo "Commands:"
-        echo "   (none)     Install"
-        echo "   test        Run tests"
+        echo "   install     Install"
+        echo "   start       Start servers"
         echo "   status      Show status"
         echo ""
         ;;
