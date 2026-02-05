@@ -16,8 +16,8 @@ import {
   MarkerType,
   Handle,
   Position,
-  useNodesState,
-  useEdgesState
+  NodeChange,
+  EdgeChange
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 import { Button } from "@/components/ui/button"
@@ -289,6 +289,42 @@ function BuilderContent() {
 
   const onPaneClick = useCallback(() => setSelectedNode(null), [])
 
+  const onNodesChange = useCallback((changes: NodeChange[]) => {
+    setNodes((nds) => {
+      const updatedNodes = [...nds]
+      for (const change of changes) {
+        if (change.type === "position" && change.position) {
+          const nodeIndex = updatedNodes.findIndex(n => n.id === change.id)
+          if (nodeIndex !== -1) {
+            updatedNodes[nodeIndex] = { ...updatedNodes[nodeIndex], position: change.position }
+          }
+        }
+        if (change.type === "remove") {
+          const nodeIndex = updatedNodes.findIndex(n => n.id === change.id)
+          if (nodeIndex !== -1) {
+            updatedNodes.splice(nodeIndex, 1)
+          }
+        }
+      }
+      return updatedNodes
+    })
+  }, [])
+
+  const onEdgesChange = useCallback((changes: EdgeChange[]) => {
+    setEdges((eds) => {
+      const updatedEdges = [...eds]
+      for (const change of changes) {
+        if (change.type === "remove") {
+          const edgeIndex = updatedEdges.findIndex(e => e.id === change.id)
+          if (edgeIndex !== -1) {
+            updatedEdges.splice(edgeIndex, 1)
+          }
+        }
+      }
+      return updatedEdges
+    })
+  }, [])
+
   const handleTypeChange = (type: string) => {
     if (!selectedNode) return
     
@@ -403,8 +439,8 @@ function BuilderContent() {
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          onNodesChange={() => {}}
-          onEdgesChange={() => {}}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onNodeClick={onNodeClick}
           onPaneClick={onPaneClick}
