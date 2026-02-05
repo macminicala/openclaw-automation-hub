@@ -15,10 +15,7 @@
           <span class="logo-icon">⚡</span>
           <h1>Automation Hub</h1>
         </div>
-        <input type="text" id="search-automations" placeholder="Search automations..." class="search-input">
-        <button class="btn btn-primary" onclick="openNewAutomation()">
-          <span>+</span> New Automation
-        </button>
+        <input type="text" id="search-automations" placeholder="Search automations..." class="search-input" oninput="filterAutomations()">
       </div>
     </header>
 
@@ -37,7 +34,7 @@
     <!-- Tabs -->
     <div class="tabs">
       <button class="tab active" onclick="switchTab('automations')">Automations</button>
-      <button class="tab" onclick="switchTab('builder')">Visual Builder</button>
+      <button class="tab tab-builder" onclick="switchTab('builder')">+ Create Automation</button>
     </div>
 
     <!-- Automations Tab -->
@@ -57,374 +54,335 @@
           <div class="empty-icon">🚀</div>
           <h3>Get started with automations</h3>
           <p>Automations help you run tasks automatically on your schedule. Create your first one to save time!</p>
-          <button class="btn btn-primary" onclick="switchTab('builder')">Create Your First Automation</button>
+          <button class="btn btn-primary btn-large" onclick="switchTab('builder')">Create Your First Automation</button>
         </div>
       </main>
     </div>
 
-    <!-- Visual Workflow Builder Tab -->
+    <!-- Visual Builder Tab - Step by Step -->
     <div class="tab-content" id="tab-builder">
-      <div class="workflow-builder">
-        <!-- Visual Flow Diagram -->
-        <div class="flow-diagram" id="flow-diagram">
-          <h3>Your Automation Flow</h3>
-          <div class="flow-nodes">
-            <!-- Trigger Node -->
-            <div class="flow-node flow-trigger" id="node-trigger" onclick="configureStep('trigger')">
-              <div class="flow-node-icon" id="trigger-icon">⚡</div>
-              <div class="flow-node-label">TRIGGER</div>
-              <div class="flow-node-value" id="trigger-value">Click to select</div>
-              <div class="flow-node-edit">✏️</div>
-            </div>
-            
-            <div class="flow-connector">
-              <svg width="40" height="20">
-                <path d="M0,10 L30,10 M25,5 L30,10 L25,15" stroke="var(--accent-primary)" stroke-width="2" fill="none"/>
-              </svg>
-            </div>
-            
-            <!-- Condition Node -->
-            <div class="flow-node flow-condition" id="node-condition" onclick="configureStep('condition')">
-              <div class="flow-node-icon" id="condition-icon">🔍</div>
-              <div class="flow-node-label">CONDITION</div>
-              <div class="flow-node-value" id="condition-value">Optional</div>
-              <div class="flow-node-edit">✏️</div>
-            </div>
-            
-            <div class="flow-connector">
-              <svg width="40" height="20">
-                <path d="M0,10 L30,10 M25,5 L30,10 L25,15" stroke="var(--accent-primary)" stroke-width="2" fill="none"/>
-              </svg>
-            </div>
-            
-            <!-- Action Node -->
-            <div class="flow-node flow-action" id="node-action" onclick="configureStep('action')">
-              <div class="flow-node-icon" id="action-icon">🎯</div>
-              <div class="flow-node-label">ACTION</div>
-              <div class="flow-node-value" id="action-value">Click to select</div>
-              <div class="flow-node-edit">✏️</div>
-            </div>
+      <div class="step-builder">
+        
+        <!-- Progress Bar -->
+        <div class="progress-bar">
+          <div class="progress-step active" data-step="1">
+            <div class="step-number">1</div>
+            <div class="step-label">Trigger</div>
+          </div>
+          <div class="progress-line"></div>
+          <div class="progress-step" data-step="2">
+            <div class="step-number">2</div>
+            <div class="step-label">Action</div>
+          </div>
+          <div class="progress-line"></div>
+          <div class="progress-step" data-step="3">
+            <div class="step-number">3</div>
+            <div class="step-label">Review</div>
           </div>
         </div>
 
-        <!-- Configuration Panel -->
-        <div class="config-panel" id="config-panel">
-          <!-- Trigger Configuration -->
-          <div class="config-section" id="config-trigger">
-            <h4>Select Trigger</h4>
-            <div class="config-options">
-              <button class="config-option" data-trigger="schedule" onclick="selectTrigger('schedule')">
-                <span class="option-icon">⏰</span>
-                <span class="option-label">Schedule</span>
-                <span class="option-desc">Run at specific times</span>
-              </button>
-              <button class="config-option" data-trigger="webhook" onclick="selectTrigger('webhook')">
-                <span class="option-icon">🔗</span>
-                <span class="option-label">Webhook</span>
-                <span class="option-desc">HTTP endpoint</span>
-              </button>
-              <button class="config-option" data-trigger="file_change" onclick="selectTrigger('file_change')">
-                <span class="option-icon">📁</span>
-                <span class="option-label">File Watch</span>
-                <span class="option-desc">Monitor file changes</span>
-              </button>
-              <button class="config-option" data-trigger="email" onclick="selectTrigger('email')">
-                <span class="option-icon">📧</span>
-                <span class="option-label">Email</span>
-                <span class="option-desc">Watch inbox</span>
-              </button>
-              <button class="config-option" data-trigger="calendar" onclick="selectTrigger('calendar')">
-                <span class="option-icon">📅</span>
-                <span class="option-label">Calendar</span>
-                <span class="option-desc">Calendar events</span>
-              </button>
-              <button class="config-option" data-trigger="system" onclick="selectTrigger('system')">
-                <span class="option-icon">🖥️</span>
-                <span class="option-label">System</span>
-                <span class="option-desc">Resource monitoring</span>
-              </button>
+        <!-- Step 1: Choose Trigger -->
+        <div class="builder-step active" id="step-1">
+          <h2 class="step-title">What should start your automation?</h2>
+          <p class="step-desc">Select an event or time that will trigger this automation</p>
+          
+          <div class="cards-grid">
+            <button class="choice-card" data-trigger="schedule" onclick="selectTrigger('schedule')">
+              <div class="card-icon">⏰</div>
+              <div class="card-title">Schedule</div>
+              <div class="card-desc">Run at a specific time</div>
+            </button>
+            
+            <button class="choice-card" data-trigger="webhook" onclick="selectTrigger('webhook')">
+              <div class="card-icon">🔗</div>
+              <div class="card-title">Webhook</div>
+              <div class="card-desc">HTTP endpoint trigger</div>
+            </button>
+            
+            <button class="choice-card" data-trigger="file_change" onclick="selectTrigger('file_change')">
+              <div class="card-icon">📁</div>
+              <div class="card-title">File Watch</div>
+              <div class="card-desc">When files change</div>
+            </button>
+            
+            <button class="choice-card" data-trigger="email" onclick="selectTrigger('email')">
+              <div class="card-icon">📧</div>
+              <div class="card-title">Email</div>
+              <div class="card-desc">When emails arrive</div>
+            </button>
+            
+            <button class="choice-card" data-trigger="calendar" onclick="selectTrigger('calendar')">
+              <div class="card-icon">📅</div>
+              <div class="card-title">Calendar</div>
+              <div class="card-desc">Calendar events</div>
+            </button>
+            
+            <button class="choice-card" data-trigger="system" onclick="selectTrigger('system')">
+              <div class="card-icon">🖥️</div>
+              <div class="card-title">System</div>
+              <div class="card-desc">Resource monitoring</div>
+            </button>
+          </div>
+          
+          <!-- Trigger Settings (shown after selection) -->
+          <div class="step-settings" id="trigger-settings" style="display:none">
+            <h3>Configure Trigger</h3>
+            <div class="trigger-config" data-trigger="schedule">
+              <div class="form-group">
+                <label>Schedule</label>
+                <select id="schedule-preset" onchange="updateSchedulePreset()">
+                  <option value="every-hour">Every hour</option>
+                  <option value="every-day-9am" selected>Every day at 9:00 AM</option>
+                  <option value="every-day-6pm">Every day at 6:00 PM</option>
+                  <option value="every-monday">Every Monday at 8:00 AM</option>
+                  <option value="every-weekday">Every weekday at 9:00 AM</option>
+                  <option value="every-month">First day of every month</option>
+                  <option value="every-minute">Every minute (testing)</option>
+                </select>
+              </div>
+              <div class="form-group" id="cron-group">
+                <label>Cron Expression</label>
+                <input type="text" id="cron" placeholder="0 9 * * *" value="0 9 * * *">
+              </div>
+              <p class="help-text" id="cron-preview">Runs: Every day at 9:00 AM</p>
             </div>
             
-            <!-- Trigger Settings -->
-            <div class="trigger-settings" id="trigger-settings">
-              <!-- Schedule Settings -->
-              <div class="trigger-config" data-trigger="schedule" style="display:none">
-                <div class="form-group">
-                  <label>Schedule Preset</label>
-                  <select id="schedule-preset" onchange="updateSchedulePreset()">
-                    <option value="custom">Custom cron expression</option>
-                    <option value="every-hour">Every hour</option>
-                    <option value="every-day-9am" selected>Every day at 9:00 AM</option>
-                    <option value="every-day-6pm">Every day at 6:00 PM</option>
-                    <option value="every-monday">Every Monday at 8:00 AM</option>
-                    <option value="every-tuesday">Every Tuesday at 8:00 AM</option>
-                    <option value="every-wednesday">Every Wednesday at 8:00 AM</option>
-                    <option value="every-thursday">Every Thursday at 8:00 AM</option>
-                    <option value="every-friday">Every Friday at 8:00 AM</option>
-                    <option value="every-weekday">Every weekday at 9:00 AM</option>
-                    <option value="every-month">First day of every month at 9:00 AM</option>
-                    <option value="every-minute">Every minute (testing)</option>
-                  </select>
-                </div>
-                <div class="form-group" id="cron-group">
-                  <label>Cron Expression</label>
-                  <input type="text" id="cron" placeholder="0 9 * * *" value="0 9 * * *">
-                  <small>Format: minute hour day month weekday</small>
-                </div>
-                <div class="cron-preview" id="cron-preview">Runs: Every day at 9:00 AM</div>
-              </div>
-              
-              <!-- Webhook Settings -->
-              <div class="trigger-config" data-trigger="webhook" style="display:none">
+            <div class="trigger-config" data-trigger="webhook" style="display:none">
+              <div class="form-row">
                 <div class="form-group">
                   <label>Port</label>
                   <input type="number" id="webhook-port" value="18800">
                 </div>
-                <div class="form-group">
+                <div class="form-group flex-1">
                   <label>Endpoint</label>
-                  <input type="text" id="webhook-endpoint" value="/my-automation">
+                  <input type="text" id="webhook-endpoint" value="/automation">
                 </div>
               </div>
-              
-              <!-- File Watch Settings -->
-              <div class="trigger-config" data-trigger="file_change" style="display:none">
-                <div class="form-group">
-                  <label>Path to Watch</label>
-                  <input type="text" id="watch-path" value="~/">
-                </div>
-                <div class="form-group">
-                  <label>Events</label>
-                  <div class="checkbox-group">
-                    <label><input type="checkbox" id="event-modify" checked> Modify</label>
-                    <label><input type="checkbox" id="event-add" checked> Add</label>
-                    <label><input type="checkbox" id="event-delete"> Delete</label>
-                  </div>
+              <p class="help-text">POST to <code id="webhook-url">http://localhost:18800/automation</code></p>
+            </div>
+            
+            <div class="trigger-config" data-trigger="file_change" style="display:none">
+              <div class="form-group">
+                <label>Path to Watch</label>
+                <input type="text" id="watch-path" value="~/">
+              </div>
+              <div class="form-group">
+                <label>Events to Watch</label>
+                <div class="checkbox-row">
+                  <label><input type="checkbox" id="event-modify" checked> Modify</label>
+                  <label><input type="checkbox" id="event-add" checked> Add</label>
+                  <label><input type="checkbox" id="event-delete"> Delete</label>
                 </div>
               </div>
-              
-              <!-- Email Settings -->
-              <div class="trigger-config" data-trigger="email" style="display:none">
+            </div>
+            
+            <div class="trigger-config" data-trigger="email" style="display:none">
+              <div class="form-row">
                 <div class="form-group">
                   <label>IMAP Host</label>
                   <input type="text" id="email-host" value="imap.gmail.com">
                 </div>
-                <div class="form-group">
-                  <label>Email</label>
+                <div class="form-group flex-1">
+                  <label>Email Address</label>
                   <input type="email" id="email-user" placeholder="your@email.com">
                 </div>
-                <div class="form-group">
-                  <label>Check Interval (seconds)</label>
-                  <input type="number" id="email-interval" value="60">
-                </div>
               </div>
-              
-              <!-- Calendar Settings -->
-              <div class="trigger-config" data-trigger="calendar" style="display:none">
-                <div class="form-group">
-                  <label>Provider</label>
-                  <select id="calendar-provider">
-                    <option value="google">Google Calendar</option>
-                    <option value="apple">Apple Calendar</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label>Check Interval (minutes)</label>
-                  <input type="number" id="calendar-interval" value="5">
-                </div>
-              </div>
-              
-              <!-- System Settings -->
-              <div class="trigger-config" data-trigger="system" style="display:none">
-                <div class="form-group">
-                  <label>CPU Threshold (%)</label>
-                  <input type="number" id="sys-cpu" value="90">
-                </div>
-                <div class="form-group">
-                  <label>Memory Threshold (%)</label>
-                  <input type="number" id="sys-mem" value="90">
-                </div>
-                <div class="form-group">
-                  <label>Disk Threshold (%)</label>
-                  <input type="number" id="sys-disk" value="95">
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Condition Configuration -->
-          <div class="config-section" id="config-condition" style="display:none">
-            <h4>Condition (Optional)</h4>
-            <p class="config-desc">Add a filter to only run when certain conditions are met</p>
-            <div class="condition-buttons">
-              <button class="btn btn-secondary" onclick="addCondition()">+ Add Condition</button>
-              <button class="btn btn-secondary" onclick="skipCondition()">Skip Condition</button>
-            </div>
-            
-            <!-- Condition Settings -->
-            <div class="condition-settings" id="condition-settings" style="display:none">
               <div class="form-group">
-                <label>Condition Type</label>
-                <select id="condition-type" onchange="updateConditionFields()">
-                  <option value="keyword">🔑 Keyword</option>
-                  <option value="time_range">⏰ Time Range</option>
-                  <option value="sender">👤 Sender</option>
-                  <option value="file_pattern">📄 File Pattern</option>
+                <label>Check Every</label>
+                <select id="email-interval">
+                  <option value="30">30 seconds</option>
+                  <option value="60" selected>1 minute</option>
+                  <option value="300">5 minutes</option>
                 </select>
               </div>
-              
-              <!-- Keyword Condition -->
-              <div class="condition-config" data-condition="keyword" style="display:none">
-                <div class="form-group">
-                  <label>Keyword to Match</label>
-                  <input type="text" id="keyword-value" placeholder="e.g., important, urgent">
-                </div>
-              </div>
-              
-              <!-- Time Range Condition -->
-              <div class="condition-config" data-condition="time_range" style="display:none">
-                <div class="form-group">
-                  <label>Start Time</label>
-                  <input type="time" id="time-start" value="09:00">
-                </div>
-                <div class="form-group">
-                  <label>End Time</label>
-                  <input type="time" id="time-end" value="18:00">
-                </div>
-              </div>
-              
-              <!-- Sender Condition -->
-              <div class="condition-config" data-condition="sender" style="display:none">
-                <div class="form-group">
-                  <label>Sender Email</label>
-                  <input type="email" id="sender-value" placeholder="sender@example.com">
-                </div>
-              </div>
-              
-              <!-- File Pattern Condition -->
-              <div class="condition-config" data-condition="file_pattern" style="display:none">
-                <div class="form-group">
-                  <label>File Pattern</label>
-                  <input type="text" id="file-pattern" placeholder="*.txt, *.md">
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Action Configuration -->
-          <div class="config-section" id="config-action">
-            <h4>Select Action</h4>
-            <div class="config-options">
-              <button class="config-option" data-action="shell" onclick="selectAction('shell')">
-                <span class="option-icon">💻</span>
-                <span class="option-label">Shell Command</span>
-                <span class="option-desc">Run terminal commands</span>
-              </button>
-              <button class="config-option" data-action="agent" onclick="selectAction('agent')">
-                <span class="option-icon">🤖</span>
-                <span class="option-label">AI Agent</span>
-                <span class="option-desc">Run AI tasks</span>
-              </button>
-              <button class="config-option" data-action="git" onclick="selectAction('git')">
-                <span class="option-icon">🔀</span>
-                <span class="option-label">Git</span>
-                <span class="option-desc">Auto-commit & push</span>
-              </button>
-              <button class="config-option" data-action="notify" onclick="selectAction('notify')">
-                <span class="option-icon">📱</span>
-                <span class="option-label">Notify</span>
-                <span class="option-desc">Send notifications</span>
-              </button>
-              <button class="config-option" data-action="email_reply" onclick="selectAction('email_reply')">
-                <span class="option-icon">📧</span>
-                <span class="option-label">Email Reply</span>
-                <span class="option-desc">Auto-reply to emails</span>
-              </button>
             </div>
             
-            <!-- Action Settings -->
-            <div class="action-settings" id="action-settings">
-              <!-- Shell Action -->
-              <div class="action-config" data-action="shell" style="display:none">
-                <div class="form-group">
-                  <label>Command</label>
-                  <input type="text" id="shell-command" placeholder="echo 'Done'">
-                </div>
+            <div class="trigger-config" data-trigger="calendar" style="display:none">
+              <div class="form-group">
+                <label>Calendar Provider</label>
+                <select id="calendar-provider">
+                  <option value="google">Google Calendar</option>
+                  <option value="apple">Apple Calendar</option>
+                </select>
               </div>
-              
-              <!-- Agent Action -->
-              <div class="action-config" data-action="agent" style="display:none">
-                <div class="form-group">
-                  <label>Task Description</label>
-                  <textarea id="agent-prompt" rows="3" placeholder="What should the AI do?"></textarea>
-                </div>
-                <div class="form-group">
-                  <label>Model</label>
-                  <select id="agent-model">
-                    <option value="claude-opus-4-5">Claude Opus 4</option>
-                    <option value="claude-sonnet-4">Claude Sonnet 4</option>
-                    <option value="gpt-4">GPT-4</option>
-                  </select>
-                </div>
+              <div class="form-group">
+                <label>Check Every</label>
+                <select id="calendar-interval">
+                  <option value="1">1 minute</option>
+                  <option value="5" selected>5 minutes</option>
+                  <option value="15">15 minutes</option>
+                </select>
               </div>
-              
-              <!-- Git Action -->
-              <div class="action-config" data-action="git" style="display:none">
+            </div>
+            
+            <div class="trigger-config" data-trigger="system" style="display:none">
+              <div class="form-row">
                 <div class="form-group">
-                  <label>Repository Path</label>
-                  <input type="text" id="git-path" placeholder="~/Projects/my-repo">
-                </div>
-                <div class="checkbox-group">
-                  <label><input type="checkbox" id="git-add" checked> git add .</label>
-                  <label><input type="checkbox" id="git-commit" checked> Auto-commit</label>
-                  <label><input type="checkbox" id="git-push" checked> Auto-push</label>
-                </div>
-              </div>
-              
-              <!-- Notify Action -->
-              <div class="action-config" data-action="notify" style="display:none">
-                <div class="form-group">
-                  <label>Channel</label>
-                  <select id="notify-channel">
-                    <option value="telegram">Telegram</option>
-                    <option value="slack">Slack</option>
-                    <option value="discord">Discord</option>
-                  </select>
+                  <label>CPU Alert (%)</label>
+                  <input type="number" id="sys-cpu" value="90" min="1" max="100">
                 </div>
                 <div class="form-group">
-                  <label>Message</label>
-                  <textarea id="notify-message" rows="2" placeholder="Your notification message"></textarea>
-                </div>
-              </div>
-              
-              <!-- Email Reply Action -->
-              <div class="action-config" data-action="email_reply" style="display:none">
-                <div class="form-group">
-                  <label>Subject</label>
-                  <input type="text" id="email-subject" placeholder="Re: Your email">
+                  <label>Memory Alert (%)</label>
+                  <input type="number" id="sys-mem" value="90" min="1" max="100">
                 </div>
                 <div class="form-group">
-                  <label>Body</label>
-                  <textarea id="email-body" rows="3" placeholder="Your auto-reply message"></textarea>
+                  <label>Disk Alert (%)</label>
+                  <input type="number" id="sys-disk" value="95" min="1" max="100">
                 </div>
               </div>
             </div>
           </div>
-
-          <!-- Save Button -->
-          <div class="builder-actions">
-            <button class="btn btn-primary btn-large" onclick="saveWorkflowAutomation()">
-              ✓ Create Automation
+          
+          <div class="step-actions">
+            <button class="btn btn-primary btn-large" onclick="goToStep(2)" id="btn-next-1" disabled>
+              Continue to Action →
             </button>
           </div>
         </div>
 
-        <!-- Real-time Preview -->
-        <div class="flow-preview" id="flow-preview">
-          <h4>📋 Preview</h4>
-          <div class="preview-content" id="preview-content">
-            <p class="preview-empty">Configure your automation to see the preview</p>
+        <!-- Step 2: Choose Action -->
+        <div class="builder-step" id="step-2">
+          <h2 class="step-title">What should happen next?</h2>
+          <p class="step-desc">Select the action to perform when the trigger fires</p>
+          
+          <div class="cards-grid">
+            <button class="choice-card" data-action="shell" onclick="selectAction('shell')">
+              <div class="card-icon">💻</div>
+              <div class="card-title">Run Command</div>
+              <div class="card-desc">Execute a terminal command</div>
+            </button>
+            
+            <button class="choice-card" data-action="agent" onclick="selectAction('agent')">
+              <div class="card-icon">🤖</div>
+              <div class="card-title">AI Agent</div>
+              <div class="card-desc">Run an AI task</div>
+            </button>
+            
+            <button class="choice-card" data-action="git" onclick="selectAction('git')">
+              <div class="card-icon">🔀</div>
+              <div class="card-title">Git</div>
+              <div class="card-desc">Auto-commit & push</div>
+            </button>
+            
+            <button class="choice-card" data-action="notify" onclick="selectAction('notify')">
+              <div class="card-icon">📱</div>
+              <div class="card-title">Notify</div>
+              <div class="card-desc">Send a notification</div>
+            </button>
+            
+            <button class="choice-card" data-action="email_reply" onclick="selectAction('email_reply')">
+              <div class="card-icon">📧</div>
+              <div class="card-title">Email Reply</div>
+              <div class="card-desc">Send an email</div>
+            </button>
+          </div>
+          
+          <!-- Action Settings (shown after selection) -->
+          <div class="step-settings" id="action-settings" style="display:none">
+            <h3>Configure Action</h3>
+            
+            <div class="action-config" data-action="shell" style="display:none">
+              <div class="form-group">
+                <label>Command to Run</label>
+                <input type="text" id="shell-command" placeholder="e.g., npm run build, python backup.py">
+              </div>
+            </div>
+            
+            <div class="action-config" data-action="agent" style="display:none">
+              <div class="form-group">
+                <label>Task Description</label>
+                <textarea id="agent-prompt" rows="3" placeholder="What should the AI do?"></textarea>
+              </div>
+              <div class="form-group">
+                <label>AI Model</label>
+                <select id="agent-model">
+                  <option value="claude-opus-4-5">Claude Opus 4</option>
+                  <option value="claude-sonnet-4">Claude Sonnet 4</option>
+                  <option value="gpt-4">GPT-4</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="action-config" data-action="git" style="display:none">
+              <div class="form-group">
+                <label>Repository Path</label>
+                <input type="text" id="git-path" placeholder="~/Projects/my-repo">
+              </div>
+              <div class="checkbox-row">
+                <label><input type="checkbox" id="git-add" checked> git add .</label>
+                <label><input type="checkbox" id="git-commit" checked> Auto-commit</label>
+                <label><input type="checkbox" id="git-push" checked> Auto-push</label>
+              </div>
+            </div>
+            
+            <div class="action-config" data-action="notify" style="display:none">
+              <div class="form-group">
+                <label>Channel</label>
+                <select id="notify-channel">
+                  <option value="telegram">Telegram</option>
+                  <option value="slack">Slack</option>
+                  <option value="discord">Discord</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Message</label>
+                <textarea id="notify-message" rows="2" placeholder="Your notification message"></textarea>
+              </div>
+            </div>
+            
+            <div class="action-config" data-action="email_reply" style="display:none">
+              <div class="form-group">
+                <label>Subject</label>
+                <input type="text" id="email-subject" placeholder="Re: Your email">
+              </div>
+              <div class="form-group">
+                <label>Message</label>
+                <textarea id="email-body" rows="4" placeholder="Your auto-reply message"></textarea>
+              </div>
+            </div>
+          </div>
+          
+          <div class="step-actions">
+            <button class="btn btn-secondary btn-large" onclick="goToStep(1)">
+              ← Back
+            </button>
+            <button class="btn btn-primary btn-large" onclick="goToStep(3)" id="btn-next-2" disabled>
+              Review & Save →
+            </button>
           </div>
         </div>
+
+        <!-- Step 3: Review & Save -->
+        <div class="builder-step" id="step-3">
+          <h2 class="step-title">Review your automation</h2>
+          <p class="step-desc">Give your automation a name and save it</p>
+          
+          <!-- Summary Card -->
+          <div class="summary-card">
+            <div class="summary-row">
+              <span class="summary-label">Trigger</span>
+              <span class="summary-value" id="summary-trigger">-</span>
+            </div>
+            <div class="summary-row">
+              <span class="summary-label">Action</span>
+              <span class="summary-value" id="summary-action">-</span>
+            </div>
+            <div class="summary-row summary-name">
+              <span class="summary-label">Name</span>
+              <input type="text" id="automation-name" class="summary-input" placeholder="e.g., Daily backup at 9AM">
+            </div>
+          </div>
+          
+          <div class="step-actions">
+            <button class="btn btn-secondary btn-large" onclick="goToStep(2)">
+              ← Back
+            </button>
+            <button class="btn btn-primary btn-large btn-save" onclick="saveAutomationFromBuilder()">
+              ✓ Save Automation
+            </button>
+          </div>
+        </div>
+        
       </div>
     </div>
 
@@ -437,131 +395,6 @@
         <div class="log-item log-info">Dashboard connected - Waiting for updates...</div>
       </div>
     </section>
-  </div>
-
-  <!-- Simple Modal -->
-  <div class="modal-overlay" id="modal-overlay" onclick="closeModal()"></div>
-  <div class="modal modal-simple" id="modal">
-    <div class="modal-header">
-      <h2 id="modal-title">Create Automation</h2>
-      <button class="modal-close" onclick="closeModal()">×</button>
-    </div>
-    <div class="modal-body">
-      <form id="automation-form">
-        <input type="hidden" id="edit-id">
-        
-        <!-- Step 1: Name -->
-        <div class="form-section">
-          <h3 class="section-title">📝 Name your automation</h3>
-          <div class="form-group">
-            <input type="text" id="name" placeholder="e.g., Morning backup, Daily report..." required>
-          </div>
-        </div>
-        
-        <!-- Step 2: When should it run? -->
-        <div class="form-section">
-          <h3 class="section-title">⏰ When should this run?</h3>
-          <div class="form-group">
-            <select id="schedule-preset" onchange="updateSchedulePreset()">
-              <option value="every-day-9am" selected>Every day at 9:00 AM</option>
-              <option value="every-day-6pm">Every day at 6:00 PM</option>
-              <option value="every-hour">Every hour</option>
-              <option value="every-monday">Every Monday at 8:00 AM</option>
-              <option value="every-weekday">Every weekday (Mon-Fri) at 9:00 AM</option>
-              <option value="every-month">First day of every month at 9:00 AM</option>
-              <option value="custom">Custom schedule...</option>
-            </select>
-            <p class="help-text" id="schedule-help">Runs automatically every day at 9:00 AM</p>
-          </div>
-          
-          <!-- Custom schedule (hidden by default) -->
-          <div class="form-group schedule-group" id="schedule-group" style="display:none">
-            <label for="schedule">When to run</label>
-            <input type="text" id="schedule" placeholder="e.g., 9:00 AM every day">
-            <p class="help-text">Enter when you want this automation to run in a friendly format.</p>
-            <p class="help-text">Examples: <code>9:00 AM</code>, <code>8:00 AM every Monday</code>, <code>first day of month at 9:00 AM</code></p>
-          </div>
-        </div>
-        
-        <!-- Step 3: What should it do? -->
-        <div class="form-section">
-          <h3 class="section-title">🎯 What should it do?</h3>
-          
-          <!-- Action Type Selector -->
-          <div class="action-selector">
-            <label class="action-option">
-              <input type="radio" name="action-type" value="command" checked onchange="showActionFields('command')">
-              <div class="action-card">
-                <span class="action-icon">💻</span>
-                <span class="action-label">Run a command</span>
-                <span class="action-desc">Run a command on your computer</span>
-              </div>
-            </label>
-            <label class="action-option">
-              <input type="radio" name="action-type" value="notify" onchange="showActionFields('notify')">
-              <div class="action-card">
-                <span class="action-icon">📱</span>
-                <span class="action-label">Send a notification</span>
-                <span class="action-desc">Receive a message on Telegram</span>
-              </div>
-            </label>
-            <label class="action-option">
-              <input type="radio" name="action-type" value="email" onchange="showActionFields('email')">
-              <div class="action-card">
-                <span class="action-icon">📧</span>
-                <span class="action-label">Send an email</span>
-                <span class="action-desc">Send an email message</span>
-              </div>
-            </label>
-          </div>
-          
-          <!-- Action Fields -->
-          <div class="action-fields" id="action-fields">
-            <!-- Command Fields -->
-            <div class="action-field-group" id="action-command">
-              <div class="form-group">
-                <label for="command-input">Command to run</label>
-                <input type="text" id="command-input" placeholder="e.g., npm run build, python backup.py, ls -la">
-                <p class="help-text">This command will be executed automatically at the scheduled time</p>
-              </div>
-            </div>
-            
-            <!-- Notification Fields -->
-            <div class="action-field-group" id="action-notify" style="display:none">
-              <div class="form-group">
-                <label for="notify-message">Message</label>
-                <textarea id="notify-message" rows="3" placeholder="e.g., Don't forget to review today's reports!"></textarea>
-                <p class="help-text">You'll receive this as a Telegram notification</p>
-              </div>
-            </div>
-            
-            <!-- Email Fields -->
-            <div class="action-field-group" id="action-email" style="display:none">
-              <div class="form-group">
-                <label for="email-to">To (email address)</label>
-                <input type="email" id="email-to" placeholder="recipient@example.com">
-              </div>
-              <div class="form-group">
-                <label for="email-subject">Subject</label>
-                <input type="text" id="email-subject" placeholder="Daily Report">
-              </div>
-              <div class="form-group">
-                <label for="email-body">Message</label>
-                <textarea id="email-body" rows="4" placeholder="Write your email content here..."></textarea>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Save Button -->
-        <div class="form-actions">
-          <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-          <button type="submit" class="btn btn-primary btn-large">
-            ✓ Save Automation
-          </button>
-        </div>
-      </form>
-    </div>
   </div>
 
   <!-- Toast -->
