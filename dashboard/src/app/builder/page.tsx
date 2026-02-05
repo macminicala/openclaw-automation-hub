@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useCallback, useState, useEffect } from "react"
+import { Suspense, useCallback, useState, useEffect, useMemo } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { 
   ReactFlow, 
@@ -91,9 +91,9 @@ function TriggerNode({ data, isConnectable }: any) {
   const colorClass = colors[data.type as string] || "bg-blue-500 border-blue-600"
 
   return (
-    <div className={`${colorClass} rounded-lg p-3 min-w-[140px] shadow-lg text-white cursor-move`}>
+    <div className={`${colorClass} rounded-lg p-3 min-w-[140px] shadow-lg text-white cursor-grab active:cursor-grabbing select-none`}>
       <Handle type="target" position={Position.Left} isConnectable={isConnectable} className="w-3 h-3 bg-white" />
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 pointer-events-none">
         <Zap className="w-5 h-5" />
         <div>
           <div className="text-sm font-bold">{data.label as string}</div>
@@ -116,9 +116,9 @@ function ActionNode({ data, isConnectable }: any) {
   const colorClass = colors[data.type as string] || "bg-orange-500 border-orange-600"
 
   return (
-    <div className={`${colorClass} rounded-lg p-3 min-w-[140px] shadow-lg text-white cursor-move`}>
+    <div className={`${colorClass} rounded-lg p-3 min-w-[140px] shadow-lg text-white cursor-grab active:cursor-grabbing select-none`}>
       <Handle type="target" position={Position.Left} isConnectable={isConnectable} className="w-3 h-3 bg-white" />
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 pointer-events-none">
         <Settings className="w-5 h-5" />
         <div>
           <div className="text-sm font-bold">{data.label as string}</div>
@@ -254,8 +254,17 @@ function BuilderContent() {
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     setSelectedNode(node)
-    setTempConfig({})
     
+    // Initialize tempConfig with existing node data
+    const existingConfig: Record<string, string> = { type: node.data.type as string }
+    Object.entries(node.data).forEach(([key, value]) => {
+      if (!["type", "label", "sublabel"].includes(key) && typeof value === "string") {
+        existingConfig[key] = value
+      }
+    })
+    setTempConfig(existingConfig)
+    
+    // Set schedule values from node data
     if (node.data.type === "schedule" && node.data.cron) {
       const cron = node.data.cron as string
       const parts = cron.split(" ")
@@ -287,13 +296,16 @@ function BuilderContent() {
     }
   }, [])
 
-  const onPaneClick = useCallback(() => setSelectedNode(null), [])
+  const onPaneClick = useCallback(() => {
+    setSelectedNode(null)
+    setTempConfig({})
+  }, [])
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     setNodes((nds) => {
       const updatedNodes = [...nds]
       for (const change of changes) {
-        if (change.type === "position" && change.position) {
+        if (change.type === "position" && change.position && !change. dragging) {
           const nodeIndex = updatedNodes.findIndex(n => n.id === change.id)
           if (nodeIndex !== -1) {
             updatedNodes[nodeIndex] = { ...updatedNodes[nodeIndex], position: change.position }
@@ -353,7 +365,7 @@ function BuilderContent() {
     
     setNodes((nds) => nds.map((n) => n.id === selectedNode.id ? { ...n, data: { ...n.data, ...config } } : n))
     setSelectedNode({ ...selectedNode, data: { ...selectedNode.data, ...config } })
-    setTempConfig(config)
+    setTempConfig(prev => ({ ...prev, ...config }))
     toast.success("Configurazione applicata")
   }
 
@@ -633,7 +645,7 @@ function BuilderContent() {
                   <div className="grid gap-2">
                     <Label>Endpoint</Label>
                     <Input
-                      value={tempConfig.endpoint || ((selectedNode.data.endpoint || "") as string)}
+                      value={tempConfig.endpoint || ""}
                       onChange={(e) => handleConfigChange("endpoint", e.target.value)}
                       placeholder="/webhook/my-trigger"
                     />
@@ -650,7 +662,7 @@ function BuilderContent() {
                   <div className="grid gap-2">
                     <Label>Percorso</Label>
                     <Input
-                      value={tempConfig.path || ((selectedNode.data.path || "") as string)}
+                      value={tempConfig.path || ""}
                       onChange={(e) => handleConfigChange("path", e.target.value)}
                       placeholder="~/Documents"
                     />
@@ -667,12 +679,11 @@ function BuilderContent() {
                   <div className="grid gap-2">
                     <Label>Preset</Label>
                     <Select
-                      value={SHELL_PRESETS.find(p => p.command === (tempConfig.command || selectedNode.data.command))?.label || ""}
+                      value={SHELL_PRESETS.find(p => p.command === tempConfig.command)?.label || ""}
                       onValueChange={(value) => {
                         const preset = SHELL_PRESETS.find(p => p.label === value)
                         if (preset) {
                           handleConfigChange("command", preset.command)
-                          setTempConfig(prev => ({ ...prev, command: preset.command }))
                         }
                       }}
                     >
@@ -687,7 +698,7 @@ function BuilderContent() {
                   <div className="grid gap-2">
                     <Label>Comando</Label>
                     <Input
-                      value={tempConfig.command || ((selectedNode.data.command || "") as string)}
+                      value={tempConfig.command || ""}
                       onChange={(e) => handleConfigChange("command", e.target.value)}
                       placeholder="echo 'Hello'"
                     />
