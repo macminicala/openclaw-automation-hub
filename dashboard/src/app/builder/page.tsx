@@ -13,7 +13,9 @@ import {
   ReactFlowProvider,
   useReactFlow,
   Panel,
-  MarkerType
+  MarkerType,
+  Handle,
+  Position
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 import { Button } from "@/components/ui/button"
@@ -21,7 +23,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Save, Settings, GripVertical, Clock, Calendar, Repeat } from "lucide-react"
+import { ArrowLeft, Save, Settings, GripVertical, Clock, Calendar, Repeat, Zap } from "lucide-react"
 import { toast } from "sonner"
 
 const API_URL = "http://localhost:18799/api"
@@ -52,7 +54,6 @@ const SHELL_PRESETS = [
   { label: "💾 Free memory", command: "sudo purge" },
 ]
 
-// Schedule frequency options
 const SCHEDULE_FREQUENCIES = [
   { value: "minutely", label: "Ogni minuto" },
   { value: "hourly", label: "Ogni ora" },
@@ -76,6 +77,64 @@ const DAYS_OF_MONTH = Array.from({ length: 28 }, (_, i) => ({
   label: `${i + 1}`
 }))
 
+// Custom Trigger Node Component
+function TriggerNode({ data, isConnectable }: any) {
+  const colors: Record<string, string> = {
+    schedule: "bg-blue-500 border-blue-600",
+    webhook: "bg-green-500 border-green-600",
+    file_change: "bg-purple-500 border-purple-600",
+    email: "bg-yellow-500 border-yellow-600",
+    calendar: "bg-pink-500 border-pink-600",
+    system: "bg-red-500 border-red-600",
+  }
+  const colorClass = colors[data.type as string] || "bg-blue-500 border-blue-600"
+
+  return (
+    <div className={`${colorClass} rounded-lg p-3 min-w-[140px] shadow-lg text-white`}>
+      <Handle type="target" position={Position.Left} isConnectable={isConnectable} className="w-3 h-3 bg-white" />
+      <div className="flex items-center gap-2">
+        <Zap className="w-5 h-5" />
+        <div>
+          <div className="text-sm font-bold">{data.label as string}</div>
+          <div className="text-xs opacity-80">{data.sublabel as string}</div>
+        </div>
+      </div>
+      <Handle type="source" position={Position.Right} isConnectable={isConnectable} className="w-3 h-3 bg-white" />
+    </div>
+  )
+}
+
+// Custom Action Node Component  
+function ActionNode({ data, isConnectable }: any) {
+  const colors: Record<string, string> = {
+    shell: "bg-orange-500 border-orange-600",
+    ai_agent: "bg-indigo-500 border-indigo-600",
+    git: "bg-gray-600 border-gray-700",
+    notify: "bg-teal-500 border-teal-600",
+    email: "bg-cyan-500 border-cyan-600",
+  }
+  const colorClass = colors[data.type as string] || "bg-orange-500 border-orange-600"
+
+  return (
+    <div className={`${colorClass} rounded-lg p-3 min-w-[140px] shadow-lg text-white`}>
+      <Handle type="target" position={Position.Left} isConnectable={isConnectable} className="w-3 h-3 bg-white" />
+      <div className="flex items-center gap-2">
+        <Settings className="w-5 h-5" />
+        <div>
+          <div className="text-sm font-bold">{data.label as string}</div>
+          <div className="text-xs opacity-80">{data.sublabel as string}</div>
+        </div>
+      </div>
+      <Handle type="source" position={Position.Right} isConnectable={isConnectable} className="w-3 h-3 bg-white" />
+    </div>
+  )
+}
+
+const nodeTypes = {
+  trigger: TriggerNode,
+  action: ActionNode,
+}
+
 function BuilderContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -88,7 +147,6 @@ function BuilderContent() {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null)
   const [tempConfig, setTempConfig] = useState<Record<string, string>>({})
 
-  // Schedule-specific state
   const [scheduleFreq, setScheduleFreq] = useState("daily")
   const [scheduleTime, setScheduleTime] = useState("08:00")
   const [scheduleDayOfWeek, setScheduleDayOfWeek] = useState("1")
@@ -116,6 +174,7 @@ function BuilderContent() {
           data: { 
             type: data.trigger?.type || "schedule",
             label: triggerLabels[data.trigger?.type] || "Trigger",
+            sublabel: getSublabel(data.trigger),
             ...data.trigger
           },
         }
@@ -127,6 +186,7 @@ function BuilderContent() {
           data: { 
             type: data.actions?.[0]?.type || "shell",
             label: actionLabels[data.actions?.[0]?.type] || "Action",
+            sublabel: getActionSublabel(data.actions?.[0]),
             ...data.actions?.[0]
           },
         }
@@ -142,34 +202,39 @@ function BuilderContent() {
         }])
       }
     } catch (error) {
-      toast.error("Errore nel caricamento dell'automazione")
+      toast.error("Errore nel caricamento")
     }
   }
 
-  // Generate cron from schedule config
+  const getSublabel = (trigger: any): string => {
+    if (!trigger) return "Trigger"
+    if (trigger.cron) return `Cron: ${trigger.cron}`
+    if (trigger.endpoint) return `Endpoint: ${trigger.endpoint}`
+    if (trigger.path) return `Path: ${trigger.path}`
+    return "Trigger"
+  }
+
+  const getActionSublabel = (action: any): string => {
+    if (!action) return "Action"
+    if (action.command) return action.command.substring(0, 20) + "..."
+    if (action.agent) return `Agent: ${action.agent}`
+    return "Action"
+  }
+
   const generateCronFromSchedule = () => {
     const [hours, minutes] = scheduleTime.split(":")
     
     switch (scheduleFreq) {
-      case "minutely":
-        return "* * * * *"
-      case "hourly":
-        return `0 * * * *`
-      case "daily":
-        return `${minutes} ${hours} * * *`
-      case "weekly":
-        return `${minutes} ${hours} * * ${scheduleDayOfWeek}`
-      case "monthly":
-        return `${minutes} ${hours} ${scheduleDayOfMonth} * *`
-      default:
-        return `${minutes} ${hours} * * *`
+      case "minutely": return "* * * * *"
+      case "hourly": return `0 * * * *`
+      case "daily": return `${minutes} ${hours} * * *`
+      case "weekly": return `${minutes} ${hours} * * ${scheduleDayOfWeek}`
+      case "monthly": return `${minutes} ${hours} ${scheduleDayOfMonth} * *`
+      default: return `${minutes} ${hours} * * *`
     }
   }
 
-  const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges],
-  )
+  const onConnect = useCallback((params: Connection) => setEdges((eds) => addEdge(params, eds)), [setEdges])
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault()
@@ -182,18 +247,19 @@ function BuilderContent() {
       const itemType = event.dataTransfer.getData("itemType")
       if (!itemType) return
 
-      const position = screenToFlowPosition({
-        x: event.clientX,
-        y: event.clientY,
-      })
+      const position = screenToFlowPosition({ x: event.clientX, y: event.clientY })
+      
+      const labels = itemType === "trigger" ? triggerLabels : actionLabels
+      const defaultType = itemType === "trigger" ? "schedule" : "shell"
 
       const newNode: Node = {
         id: `${itemType}-${Date.now()}`,
         type: itemType,
         position,
         data: { 
-          type: itemType === "trigger" ? "schedule" : "shell",
-          label: itemType === "trigger" ? "Trigger" : "Action"
+          type: defaultType,
+          label: labels[defaultType],
+          sublabel: itemType === "trigger" ? "Trigger" : "Action"
         },
       }
 
@@ -206,14 +272,13 @@ function BuilderContent() {
     setSelectedNode(node)
     setTempConfig({})
     
-    // Parse existing cron if schedule
     if (node.data.type === "schedule" && node.data.cron) {
-      const cron = (node.data.cron as string)
+      const cron = node.data.cron as string
       const parts = cron.split(" ")
       
-      if (parts[0] !== "*") {
+      if (parts[0] !== "*" && parts[1] === "*") {
         setScheduleFreq("minutely")
-      } else if (parts[1] !== "*") {
+      } else if (parts[1] !== "*" && parts[2] === "*") {
         setScheduleFreq("hourly")
       } else if (parts[4] !== "*" && parts[2] === "*") {
         setScheduleFreq("daily")
@@ -238,9 +303,7 @@ function BuilderContent() {
     }
   }, [])
 
-  const onPaneClick = useCallback(() => {
-    setSelectedNode(null)
-  }, [])
+  const onPaneClick = useCallback(() => setSelectedNode(null), [])
 
   const handleTypeChange = (type: string) => {
     if (!selectedNode) return
@@ -252,8 +315,6 @@ function BuilderContent() {
       config.cron = generateCronFromSchedule()
     } else if (type === "webhook") {
       config.endpoint = "/webhook"
-    } else if (type === "file_change") {
-      config.path = "~/Documents"
     } else if (type === "shell") {
       config.command = "echo 'Hello'"
     }
@@ -266,20 +327,12 @@ function BuilderContent() {
     if (!selectedNode) return
     const cron = generateCronFromSchedule()
     const config = { 
-      ...tempConfig, 
-      cron,
-      frequency: scheduleFreq,
-      time: scheduleTime,
-      dayOfWeek: scheduleDayOfWeek,
-      dayOfMonth: scheduleDayOfMonth
+      cron, frequency: scheduleFreq, time: scheduleTime, 
+      dayOfWeek: scheduleDayOfWeek, dayOfMonth: scheduleDayOfMonth 
     }
     
-    setNodes((nds) =>
-      nds.map((n) =>
-        n.id === selectedNode.id ? { ...n, data: { ...n.data, ...config } } : n
-      )
-    )
-    setSelectedNode({ ...selectedNode, data: { ...selectedNode.data, ...config } })
+    setNodes((nds) => nds.map((n) => n.id === selectedNode.id ? { ...n, data: { ...n.data, ...config, sublabel: `Cron: ${cron}` } } : n))
+    setSelectedNode({ ...selectedNode, data: { ...selectedNode.data, ...config, sublabel: `Cron: ${cron}` } })
     setTempConfig(config)
     toast.success("Configurazione applicata")
   }
@@ -290,20 +343,14 @@ function BuilderContent() {
 
   const applyConfig = () => {
     if (!selectedNode) return
-    setNodes((nds) =>
-      nds.map((n) =>
-        n.id === selectedNode.id
-          ? { ...n, data: { ...n.data, ...tempConfig } }
-          : n
-      )
-    )
+    setNodes((nds) => nds.map((n) => n.id === selectedNode.id ? { ...n, data: { ...n.data, ...tempConfig } } : n))
     setSelectedNode({ ...selectedNode, data: { ...selectedNode.data, ...tempConfig } })
     toast.success("Configurazione applicata")
   }
 
   const onSave = async () => {
     if (!automationName.trim()) {
-      toast.error("Inserisci un nome per l'automazione")
+      toast.error("Inserisci un nome")
       return
     }
 
@@ -311,7 +358,7 @@ function BuilderContent() {
     const actionNode = nodes.find((n) => n.type === "action")
 
     if (!triggerNode || !actionNode || edges.length === 0) {
-      toast.error("Completa il workflow (Trigger + Azione + Connessione)")
+      toast.error("Completa il workflow")
       return
     }
 
@@ -321,13 +368,13 @@ function BuilderContent() {
       const actionConfig: Record<string, string> = {}
 
       Object.entries(triggerNode.data).forEach(([key, value]) => {
-        if (!["type", "label", "selected"].includes(key)) {
+        if (!["type", "label", "sublabel"].includes(key)) {
           triggerConfig[key] = value as string
         }
       })
 
       Object.entries(actionNode.data).forEach(([key, value]) => {
-        if (!["type", "label", "selected"].includes(key)) {
+        if (!["type", "label", "sublabel"].includes(key)) {
           actionConfig[key] = value as string
         }
       })
@@ -340,10 +387,8 @@ function BuilderContent() {
       }
 
       const url = automationId ? `${API_URL}/automations/${automationId}` : `${API_URL}/automations`
-      const method = automationId ? "PUT" : "POST"
-
       const response = await fetch(url, {
-        method,
+        method: automationId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       })
@@ -367,11 +412,18 @@ function BuilderContent() {
         <ReactFlow
           nodes={nodes}
           edges={edges}
+          onNodesChange={(changes) => {
+      // React Flow handles node dragging automatically
+    }}
+          onEdgesChange={(changes) => {
+      // React Flow handles edge changes automatically
+    }}
           onConnect={onConnect}
           onNodeClick={onNodeClick}
           onPaneClick={onPaneClick}
           onDragOver={onDragOver}
           onDrop={onDrop}
+          nodeTypes={nodeTypes}
           fitView
           className="bg-background"
         >
@@ -404,15 +456,12 @@ function BuilderContent() {
         </ReactFlow>
       </div>
 
-      {/* Nodes Sidebar */}
       <div className="w-64 border-l bg-card p-4 overflow-y-auto">
         <h3 className="font-semibold mb-4">Nodi</h3>
         
         <div className="space-y-4">
           <div>
-            <h4 className="text-sm font-medium mb-2 text-muted-foreground flex items-center gap-2">
-              <Clock className="h-4 w-4" /> Triggers
-            </h4>
+            <h4 className="text-sm font-medium mb-2 text-muted-foreground">Triggers</h4>
             <div className="space-y-2">
               {Object.entries(triggerLabels).map(([type, label]) => (
                 <div
@@ -429,9 +478,7 @@ function BuilderContent() {
           </div>
 
           <div>
-            <h4 className="text-sm font-medium mb-2 text-muted-foreground flex items-center gap-2">
-              <Settings className="h-4 w-4" /> Actions
-            </h4>
+            <h4 className="text-sm font-medium mb-2 text-muted-foreground">Actions</h4>
             <div className="space-y-2">
               {Object.entries(actionLabels).map(([type, label]) => (
                 <div
@@ -449,20 +496,18 @@ function BuilderContent() {
         </div>
 
         <div className="mt-6 p-4 bg-muted rounded-lg text-sm">
-          <p className="font-medium mb-2 flex items-center gap-2">
-            <Repeat className="h-4 w-4" /> Come usare:
-          </p>
+          <p className="font-medium mb-2">Come usare:</p>
           <ol className="space-y-1 list-decimal list-inside text-muted-foreground">
             <li>Trascina un Trigger</li>
             <li>Trascina un'Azione</li>
             <li>Connettili (drag dal punto blu)</li>
             <li>Clicca i nodi per configurare</li>
+            <li>Trascina i nodi per posizionarli</li>
             <li>Salva</li>
           </ol>
         </div>
       </div>
 
-      {/* Configuration Panel */}
       {selectedNode && (
         <div className="w-80 border-l bg-card p-4 overflow-y-auto">
           <div className="flex items-center gap-2 mb-4">
@@ -484,15 +529,12 @@ function BuilderContent() {
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(selectedNode.type === "trigger" ? triggerLabels : actionLabels).map(([type, label]) => (
-                    <SelectItem key={type} value={type}>
-                      {label}
-                    </SelectItem>
+                    <SelectItem key={type} value={type}>{label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Schedule Config - User Friendly */}
             {tempConfig.type === "schedule" && (
               <Card>
                 <CardHeader className="pb-2">
@@ -504,158 +546,100 @@ function BuilderContent() {
                   <div className="grid gap-2">
                     <Label>Frequenza</Label>
                     <Select value={scheduleFreq} onValueChange={setScheduleFreq}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {SCHEDULE_FREQUENCIES.map((freq) => (
-                          <SelectItem key={freq.value} value={freq.value}>
-                            {freq.label}
-                          </SelectItem>
+                          <SelectItem key={freq.value} value={freq.value}>{freq.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {/* Daily - Time input */}
                   {scheduleFreq === "daily" && (
                     <div className="grid gap-2">
                       <Label>Orario</Label>
-                      <Input
-                        type="time"
-                        value={scheduleTime}
-                        onChange={(e) => setScheduleTime(e.target.value)}
-                      />
+                      <Input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} />
                     </div>
                   )}
 
-                  {/* Weekly - Day selector */}
                   {scheduleFreq === "weekly" && (
                     <div className="grid gap-2">
                       <Label>Giorno</Label>
                       <Select value={scheduleDayOfWeek} onValueChange={setScheduleDayOfWeek}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {DAYS_OF_WEEK.map((day) => (
-                            <SelectItem key={day.value} value={day.value}>
-                              {day.label}
-                            </SelectItem>
+                            <SelectItem key={day.value} value={day.value}>{day.label}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                      <div className="grid gap-2 mt-2">
-                        <Label>Orario</Label>
-                        <Input
-                          type="time"
-                          value={scheduleTime}
-                          onChange={(e) => setScheduleTime(e.target.value)}
-                        />
-                      </div>
+                      <Input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} />
                     </div>
                   )}
 
-                  {/* Monthly - Day selector */}
                   {scheduleFreq === "monthly" && (
                     <div className="grid gap-2">
                       <Label>Giorno del mese</Label>
                       <Select value={scheduleDayOfMonth} onValueChange={setScheduleDayOfMonth}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {DAYS_OF_MONTH.map((day) => (
-                            <SelectItem key={day.value} value={day.value}>
-                              {day.label}
-                            </SelectItem>
+                            <SelectItem key={day.value} value={day.value}>{day.label}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                      <div className="grid gap-2 mt-2">
-                        <Label>Orario</Label>
-                        <Input
-                          type="time"
-                          value={scheduleTime}
-                          onChange={(e) => setScheduleTime(e.target.value)}
-                        />
-                      </div>
+                      <Input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} />
                     </div>
                   )}
 
-                  {/* Hourly - no additional config */}
-                  {scheduleFreq === "hourly" && (
+                  {(scheduleFreq === "hourly" || scheduleFreq === "minutely") && (
                     <p className="text-sm text-muted-foreground">
-                      Esegue all'inizio di ogni ora
+                      {scheduleFreq === "hourly" ? "All'inizio di ogni ora" : "Ogni minuto"}
                     </p>
                   )}
 
-                  {/* Minutely - no additional config */}
-                  {scheduleFreq === "minutely" && (
-                    <p className="text-sm text-muted-foreground">
-                      Esegue ogni minuto
-                    </p>
-                  )}
-
-                  <Button onClick={applyScheduleConfig} className="w-full">
-                    Applica
-                  </Button>
+                  <Button onClick={applyScheduleConfig} className="w-full">Applica</Button>
                 </CardContent>
               </Card>
             )}
 
-            {/* Webhook Config */}
             {tempConfig.type === "webhook" && (
               <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Webhook</CardTitle>
-                </CardHeader>
+                <CardHeader className="pb-2"><CardTitle className="text-sm">Webhook</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid gap-2">
-                    <Label>Endpoint URL</Label>
+                    <Label>Endpoint</Label>
                     <Input
                       value={tempConfig.endpoint || ((selectedNode.data.endpoint || "") as string)}
                       onChange={(e) => handleConfigChange("endpoint", e.target.value)}
                       placeholder="/webhook/my-trigger"
                     />
                   </div>
-                  <Button onClick={applyConfig} className="w-full">
-                    Applica
-                  </Button>
+                  <Button onClick={applyConfig} className="w-full">Applica</Button>
                 </CardContent>
               </Card>
             )}
 
-            {/* File Change Config */}
             {tempConfig.type === "file_change" && (
               <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Monitora File</CardTitle>
-                </CardHeader>
+                <CardHeader className="pb-2"><CardTitle className="text-sm">Monitora File</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid gap-2">
-                    <Label>Percorso file/cartella</Label>
+                    <Label>Percorso</Label>
                     <Input
                       value={tempConfig.path || ((selectedNode.data.path || "") as string)}
                       onChange={(e) => handleConfigChange("path", e.target.value)}
                       placeholder="~/Documents"
                     />
                   </div>
-                  <Button onClick={applyConfig} className="w-full">
-                    Applica
-                  </Button>
+                  <Button onClick={applyConfig} className="w-full">Applica</Button>
                 </CardContent>
               </Card>
             )}
 
-            {/* Shell Config */}
             {tempConfig.type === "shell" && (
               <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Repeat className="h-4 w-4" /> Comando
-                  </CardTitle>
-                </CardHeader>
+                <CardHeader className="pb-2"><CardTitle className="text-sm">Comando</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid gap-2">
                     <Label>Preset</Label>
@@ -669,14 +653,10 @@ function BuilderContent() {
                         }
                       }}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona..." />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Seleziona..." /></SelectTrigger>
                       <SelectContent>
                         {SHELL_PRESETS.map((preset) => (
-                          <SelectItem key={preset.label} value={preset.label}>
-                            {preset.label}
-                          </SelectItem>
+                          <SelectItem key={preset.label} value={preset.label}>{preset.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -689,61 +669,7 @@ function BuilderContent() {
                       placeholder="echo 'Hello'"
                     />
                   </div>
-                  <Button onClick={applyConfig} className="w-full">
-                    Applica
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* AI Agent Config */}
-            {tempConfig.type === "ai_agent" && (
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">AI Agent</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-2">
-                    <Label>Agente</Label>
-                    <Select
-                      value={tempConfig.agent || ((selectedNode.data.agent || "") as string)}
-                      onValueChange={(value) => handleConfigChange("agent", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleziona..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="writer">Writer - Scrive contenuti</SelectItem>
-                        <SelectItem value="coder">Coder - Scrive codice</SelectItem>
-                        <SelectItem value="researcher">Researcher - Ricerca</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button onClick={applyConfig} className="w-full">
-                    Applica
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Notify Config */}
-            {tempConfig.type === "notify" && (
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Notifica</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-2">
-                    <Label>Messaggio</Label>
-                    <Input
-                      value={tempConfig.message || ((selectedNode.data.message || "") as string)}
-                      onChange={(e) => handleConfigChange("message", e.target.value)}
-                      placeholder="Task completato!"
-                    />
-                  </div>
-                  <Button onClick={applyConfig} className="w-full">
-                    Applica
-                  </Button>
+                  <Button onClick={applyConfig} className="w-full">Applica</Button>
                 </CardContent>
               </Card>
             )}
