@@ -17,7 +17,6 @@ CYAN='\033[0;36m'
 MAGENTA='\033[0;35m'
 NC='\033[0m'
 
-# Functions
 log() { echo -e "${CYAN}[🤖]${NC} $1"; }
 success() { echo -e "${GREEN}✅ $1${NC}"; }
 warn() { echo -e "${YELLOW}⚠️  $1${NC}"; }
@@ -86,21 +85,11 @@ success() { echo -e "${GREEN}✅ $1${NC}"; }
 warn() { echo -e "${YELLOW}⚠️  $1${NC}"; }
 error() { echo -e "${RED}❌ $1${NC}"; exit 1; }
 
-# Check if process is running by PID file
-is_running() {
-    local pidfile=$1
-    if [ -f "$pidfile" ]; then
-        kill -0 "$(cat "$pidfile")" 2>/dev/null
-        return $?
-    fi
-    return 1
-}
-
 show_help() {
     echo ""
     echo -e "${MAGENTA}⚡ Automation Hub CLI${NC}"
     echo ""
-    echo "Usage: automationhub <command> [subcommand]"
+    echo "Usage: automationhub <command>"
     echo ""
     echo "Commands:"
     echo "  install              Install/update Automation Hub"
@@ -147,6 +136,7 @@ cmd_dashboard() {
             if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
                 warn "Dashboard already running"
             else
+                log "Starting Next.js dev server..."
                 cd "$SKILL_DIR/dashboard"
                 nohup npm run dev > /tmp/automation-dashboard.log 2>&1 &
                 echo $! > "$pidfile"
@@ -154,7 +144,7 @@ cmd_dashboard() {
                 if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
                     success "Dashboard started on port 3000"
                 else
-                    error "Failed to start Dashboard"
+                    error "Failed to start Dashboard. Check: cat /tmp/automation-dashboard.log"
                 fi
             fi
             ;;
@@ -170,12 +160,12 @@ cmd_dashboard() {
                     rm -f "$pidfile"
                 fi
             else
-                warn "Dashboard not running"
+                warn "Dashboard not running (no PID file)"
             fi
             ;;
         status|*)
             if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
-                echo -e "🌐 Dashboard: ${GREEN}Running${NC} (port 3000)"
+                echo -e "🌐 Dashboard: ${GREEN}Running${NC} (PID: $(cat "$pidfile"))"
             else
                 echo -e "🌐 Dashboard: ${RED}Stopped${NC}"
             fi
@@ -194,14 +184,15 @@ cmd_api() {
             if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
                 warn "API already running"
             else
+                log "Starting Node API server..."
                 cd "$SKILL_DIR"
                 nohup node api-server.js > /tmp/automation-api.log 2>&1 &
                 echo $! > "$pidfile"
-                sleep 1
+                sleep 2
                 if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
                     success "API started on port 18799"
                 else
-                    error "Failed to start API"
+                    error "Failed to start API. Check: cat /tmp/automation-api.log"
                 fi
             fi
             ;;
@@ -217,12 +208,12 @@ cmd_api() {
                     rm -f "$pidfile"
                 fi
             else
-                warn "API not running"
+                warn "API not running (no PID file)"
             fi
             ;;
         status|*)
             if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
-                echo -e "🔌 API: ${GREEN}Running${NC} (port 18799)"
+                echo -e "🔌 API: ${GREEN}Running${NC} (PID: $(cat "$pidfile"))"
             else
                 echo -e "🔌 API: ${RED}Stopped${NC}"
             fi
@@ -275,17 +266,8 @@ CMDCAT
     echo "🌐 Run 'automationhub start' to begin!"
 }
 
-# Run tests
-test() {
-    cd "$SKILL_DIR"
-    npm test
-}
-
 # Main
 case "$1" in
-    test|--test|-t)
-        test
-        ;;
     install|--install|-i|"")
         install
         echo ""
