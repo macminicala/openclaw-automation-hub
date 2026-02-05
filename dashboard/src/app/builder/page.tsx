@@ -235,15 +235,15 @@ function BuilderContent() {
       const position = screenToFlowPosition({ x: event.clientX, y: event.clientY })
       
       const labels = itemType === "trigger" ? triggerLabels : actionLabels
-      const defaultType = itemType === "trigger" ? "schedule" : "shell"
+      const nodeType = event.dataTransfer.getData("nodeType") || (itemType === "trigger" ? "schedule" : "shell")
 
       const newNode: Node = {
         id: `${itemType}-${Date.now()}`,
         type: itemType,
         position,
         data: { 
-          type: defaultType,
-          label: labels[defaultType],
+          type: nodeType,
+          label: labels[nodeType] || labels[itemType === "trigger" ? "schedule" : "shell"],
         },
       }
 
@@ -511,7 +511,10 @@ function BuilderContent() {
                 <div
                   key={type}
                   draggable
-                  onDragStart={(e) => e.dataTransfer.setData("itemType", "trigger")}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData("itemType", "trigger")
+                    e.dataTransfer.setData("nodeType", type)
+                  }}
                   className="flex items-center gap-2 p-3 bg-muted rounded-lg cursor-grab hover:bg-muted/80 transition-colors"
                 >
                   <GripVertical className="h-4 w-4 text-muted-foreground" />
@@ -528,7 +531,10 @@ function BuilderContent() {
                 <div
                   key={type}
                   draggable
-                  onDragStart={(e) => e.dataTransfer.setData("itemType", "action")}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData("itemType", "action")
+                    e.dataTransfer.setData("nodeType", type)
+                  }}
                   className="flex items-center gap-2 p-3 bg-muted rounded-lg cursor-grab hover:bg-muted/80 transition-colors"
                 >
                   <GripVertical className="h-4 w-4 text-muted-foreground" />
