@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useCallback, useState, useEffect } from "react"
+import { Suspense, useCallback, useState, useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { 
   ReactFlow, 
@@ -204,6 +204,7 @@ function BuilderContent() {
   const [automationId, setAutomationId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [configNode, setConfigNode] = useState<Node | null>(null)
+  const openConfigRef = useRef<(node: Node) => void>(() => {})
   const [deleteNodeId, setDeleteNodeId] = useState<string | null>(null)
   const [tempConfig, setTempConfig] = useState<Record<string, string>>({})
 
@@ -224,7 +225,7 @@ function BuilderContent() {
     const handleEditNode = (e: Event) => {
       const nodeData = (e as CustomEvent).detail
       const node = nodes.find(n => n.id === nodeData.id)
-      if (node) openConfig(node)
+      if (node) openConfigRef.current(node)
     }
 
     const handleDeleteNode = (e: Event) => {
@@ -335,6 +336,7 @@ function BuilderContent() {
 
   const openConfig = useCallback((node: Node) => {
     setConfigNode(node)
+    openConfigRef.current(node)
     
     const existingConfig: Record<string, string> = { type: node.data.type as string }
     Object.entries(node.data).forEach(([key, value]) => {
@@ -794,7 +796,7 @@ function BuilderContent() {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
-          onNodeClick={(_, node) => openConfig(node)}
+          onNodeClick={() => {}}
           onPaneClick={closeConfig}
           onDragOver={onDragOver}
           onDrop={onDrop}
