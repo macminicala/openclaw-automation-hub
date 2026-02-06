@@ -2,22 +2,22 @@
 
 import { Suspense, useCallback, useState, useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { 
-  ReactFlow, 
-  addEdge, 
-  Background, 
-  Controls, 
-  Connection, 
-  Edge, 
-  Node, 
+import {
+  ReactFlow,
+  addEdge,
+  applyNodeChanges,
+  applyEdgeChanges,
+  Background,
+  Controls,
+  Connection,
+  Edge,
+  Node,
   ReactFlowProvider,
   useReactFlow,
   Panel,
   MarkerType,
-  Handle,
-  Position,
   NodeChange,
-  EdgeChange
+  EdgeChange,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 import { Button } from "@/components/ui/button"
@@ -26,177 +26,30 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { ArrowLeft, Save, GripVertical, Calendar, Settings, Mail, Monitor, GitBranch, Bell, Folder, Globe, Clock, Edit3, Trash2 } from "lucide-react"
+import { ArrowLeft, Save, GripVertical, Clock, Settings, Mail, Bell, Globe, Folder, Calendar, Monitor, Trash2, GitBranch } from "lucide-react"
 import { toast } from "sonner"
 
-const API_URL = "http://localhost:18799/api"
+import {
+  API_URL,
+  triggerLabels,
+  actionLabels,
+  SHELL_PRESETS,
+  SCHEDULE_FREQUENCIES,
+  DAYS_OF_WEEK,
+  DAYS_OF_MONTH,
+  GIT_COMMANDS,
+  SYSTEM_EVENTS,
+  NOTIFY_CHANNELS,
+} from "@/lib/constants/automation-config"
+import { nodeTypes } from "@/components/flow-nodes"
+import { ScheduleConfig, ShellConfig, WebhookConfig } from "@/components/builder/config-modals"
 
-const triggerLabels: Record<string, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
-  schedule: { label: "Schedule", icon: Clock },
-  webhook: { label: "Webhook", icon: Globe },
-  file_change: { label: "File Change", icon: Folder },
-  email: { label: "Email", icon: Mail },
-  calendar: { label: "Calendar", icon: Calendar },
-  system: { label: "System", icon: Monitor },
-}
-
-const actionLabels: Record<string, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
-  shell: { label: "Shell", icon: Settings },
-  ai_agent: { label: "AI Agent", icon: Settings },
-  git: { label: "Git", icon: GitBranch },
-  notify: { label: "Notify", icon: Bell },
-  email: { label: "Email", icon: Mail },
-}
-
-const SHELL_PRESETS = [
-  { label: "Backup cartella", command: "cp -r ~/Documents ~/Documents_backup_$(date +%Y%m%d)" },
-  { label: "Pull Git", command: "cd ~/Projects && git pull origin main" },
-  { label: "npm install", command: "cd ~/Projects && npm install" },
-  { label: "npm build", command: "cd ~/Projects && npm run build" },
-  { label: "Docker compose up", command: "cd ~/Projects && docker compose up -d" },
-  { label: "Free memory", command: "sudo purge" },
-]
-
-const SCHEDULE_FREQUENCIES = [
-  { value: "minutely", label: "Ogni minuto" },
-  { value: "hourly", label: "Ogni ora" },
-  { value: "daily", label: "Ogni giorno" },
-  { value: "weekly", label: "Ogni settimana" },
-  { value: "monthly", label: "Ogni mese" },
-]
-
-const DAYS_OF_WEEK = [
-  { value: "1", label: "Lunedì" },
-  { value: "2", label: "Martedì" },
-  { value: "3", label: "Mercoledì" },
-  { value: "4", label: "Giovedì" },
-  { value: "5", label: "Venerdì" },
-  { value: "6", label: "Sabato" },
-  { value: "0", label: "Domenica" },
-]
-
-const DAYS_OF_MONTH = Array.from({ length: 28 }, (_, i) => ({
-  value: String(i + 1),
-  label: `${i + 1}`
-}))
-
-const GIT_COMMANDS = [
-  { label: "Pull", command: "git pull origin main" },
-  { label: "Push", command: "git push origin main" },
-  { label: "Clone", command: "git clone <repository>" },
-  { label: "Checkout", command: "git checkout <branch>" },
-  { label: "Status", command: "git status" },
-  { label: "Log", command: "git log --oneline -10" },
-]
-
-const SYSTEM_EVENTS = [
-  { label: "Login utente", value: "user.login" },
-  { label: "Logout utente", value: "user.logout" },
-  { label: "Avvio sistema", value: "system.startup" },
-  { label: "Spegnimento", value: "system.shutdown" },
-  { label: "Errore critico", value: "system.error" },
-  { label: "Batteria bassa", value: "system.low_battery" },
-]
-
-const NOTIFY_CHANNELS = [
-  { label: "Notifica sistema", value: "system" },
-  { label: "Email", value: "email" },
-  { label: "Push notification", value: "push" },
-  { label: "Telegram", value: "telegram" },
-]
-
-function TriggerNode({ data, isConnectable, onEdit, onDelete }: any) {
-  const colors: Record<string, string> = {
-    schedule: "bg-blue-500 border-blue-600",
-    webhook: "bg-green-500 border-green-600",
-    file_change: "bg-purple-500 border-purple-600",
-    email: "bg-yellow-500 border-yellow-600",
-    calendar: "bg-pink-500 border-pink-600",
-    system: "bg-red-500 border-red-600",
-  }
-  const colorClass = colors[data.type as string] || "bg-blue-500 border-blue-600"
-  const Icon = triggerLabels[data.type as string]?.icon || Settings
-
-  return (
-    <div className={`${colorClass} rounded-lg p-3 min-w-[160px] shadow-lg text-white cursor-grab active:cursor-grabbing select-none relative group`}>
-      <Handle type="target" position={Position.Left} isConnectable={isConnectable} className="w-3 h-3 bg-white" />
-      <div className="flex items-center gap-2 pointer-events-none pr-6">
-        <Icon className="w-5 h-5" />
-        <div>
-          <div className="text-sm font-bold">{data.label as string}</div>
-          <div className="text-xs opacity-80 truncate max-w-[100px]">{data.sublabel as string || data.type}</div>
-        </div>
-      </div>
-      <Handle type="source" position={Position.Right} isConnectable={isConnectable} className="w-3 h-3 bg-white" />
-      
-      <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10">
-        <button
-          onClick={(e) => { e.stopPropagation(); onEdit?.(data.id) }}
-          className="p-1 bg-white rounded-full shadow hover:bg-gray-100"
-          title="Modifica"
-        >
-          <Edit3 className="w-3 h-3 text-gray-700" />
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); onDelete?.(data.id) }}
-          className="p-1 bg-white rounded-full shadow hover:bg-red-100"
-          title="Elimina"
-        >
-          <Trash2 className="w-3 h-3 text-red-600" />
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function ActionNode({ data, isConnectable, onEdit, onDelete }: any) {
-  const colors: Record<string, string> = {
-    shell: "bg-orange-500 border-orange-600",
-    ai_agent: "bg-indigo-500 border-indigo-600",
-    git: "bg-gray-600 border-gray-700",
-    notify: "bg-teal-500 border-teal-600",
-    email: "bg-cyan-500 border-cyan-600",
-  }
-  const colorClass = colors[data.type as string] || "bg-orange-500 border-orange-600"
-  const Icon = actionLabels[data.type as string]?.icon || Settings
-
-  return (
-    <div className={`${colorClass} rounded-lg p-3 min-w-[160px] shadow-lg text-white cursor-grab active:cursor-grabbing select-none relative group`}>
-      <Handle type="target" position={Position.Left} isConnectable={isConnectable} className="w-3 h-3 bg-white" />
-      <div className="flex items-center gap-2 pointer-events-none pr-6">
-        <Icon className="w-5 h-5" />
-        <div>
-          <div className="text-sm font-bold">{data.label as string}</div>
-          <div className="text-xs opacity-80 truncate max-w-[100px]">{data.sublabel as string || data.type}</div>
-        </div>
-      </div>
-      <Handle type="source" position={Position.Right} isConnectable={isConnectable} className="w-3 h-3 bg-white" />
-      
-      <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10">
-        <button
-          onClick={(e) => { e.stopPropagation(); onEdit?.(data.id) }}
-          className="p-1 bg-white rounded-full shadow hover:bg-gray-100"
-          title="Modifica"
-        >
-          <Edit3 className="w-3 h-3 text-gray-700" />
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); onDelete?.(data.id) }}
-          className="p-1 bg-white rounded-full shadow hover:bg-red-100"
-          title="Elimina"
-        >
-          <Trash2 className="w-3 h-3 text-red-600" />
-        </button>
-      </div>
-    </div>
-  )
-}
 
 function BuilderContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { screenToFlowPosition } = useReactFlow()
-  
+
   const [nodes, setNodes] = useState<Node[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
   const [automationName, setAutomationName] = useState("")
@@ -210,6 +63,12 @@ function BuilderContent() {
   const [scheduleTime, setScheduleTime] = useState("08:00")
   const [scheduleDayOfWeek, setScheduleDayOfWeek] = useState("1")
   const [scheduleDayOfMonth, setScheduleDayOfMonth] = useState("1")
+
+  // Refs to store handler functions for stable access from nodes
+  const handlersRef = useRef<{
+    onEdit: (nodeId: string) => void
+    onDelete: (nodeId: string) => void
+  } | null>(null)
 
   useEffect(() => {
     const id = searchParams.get("id")
@@ -225,31 +84,31 @@ function BuilderContent() {
       if (response.ok) {
         const data = await response.json()
         setAutomationName(data.name || "")
-        
+
         const triggerNode: Node = {
           id: "trigger",
           type: "trigger",
           position: { x: 50, y: 200 },
-          data: { 
+          data: {
             type: data.trigger?.type || "schedule",
             label: triggerLabels[data.trigger?.type]?.label || "Trigger",
             ...data.trigger
           },
         }
-        
+
         const actionNode: Node = {
           id: "action",
           type: "action",
           position: { x: 500, y: 200 },
-          data: { 
+          data: {
             type: data.actions?.[0]?.type || "shell",
             label: actionLabels[data.actions?.[0]?.type]?.label || "Action",
             ...data.actions?.[0]
           },
         }
-        
+
         setNodes([triggerNode, actionNode])
-        
+
         setEdges([{
           id: "e1",
           source: "trigger",
@@ -266,7 +125,7 @@ function BuilderContent() {
 
   const generateCronFromSchedule = () => {
     const [hours, minutes] = scheduleTime.split(":")
-    
+
     switch (scheduleFreq) {
       case "minutely": return "* * * * *"
       case "hourly": return `0 * * * *`
@@ -300,7 +159,7 @@ function BuilderContent() {
         id: `${itemType}-${Date.now()}`,
         type: itemType,
         position,
-        data: { 
+        data: {
           type: defaultType,
           label: defaultLabel,
         },
@@ -311,54 +170,6 @@ function BuilderContent() {
     [screenToFlowPosition],
   )
 
-  const handleEditNode = useCallback((nodeId: string) => {
-    const node = nodes.find(n => n.id === nodeId)
-    if (node) {
-      setConfigNode(node)
-      
-      const existingConfig: Record<string, string> = { type: node.data.type as string }
-      Object.entries(node.data).forEach(([key, value]) => {
-        if (!["type", "label", "sublabel"].includes(key) && typeof value === "string") {
-          existingConfig[key] = value
-        }
-      })
-      setTempConfig(existingConfig)
-      
-      if (node.data.type === "schedule" && node.data.cron) {
-        const cron = node.data.cron as string
-        const parts = cron.split(" ")
-        
-        if (parts[0] !== "*" && parts[1] === "*") {
-          setScheduleFreq("minutely")
-        } else if (parts[1] !== "*" && parts[2] === "*") {
-          setScheduleFreq("hourly")
-        } else if (parts[4] !== "*" && parts[2] === "*") {
-          setScheduleFreq("daily")
-          setScheduleTime(`${parts[1].padStart(2, "0")}:${parts[0].padStart(2, "0")}`)
-        } else if (parts[4] !== "*" && parts[2] !== "*") {
-          setScheduleFreq("monthly")
-          setScheduleTime(`${parts[1].padStart(2, "0")}:${parts[0].padStart(2, "0")}`)
-          setScheduleDayOfMonth(parts[2])
-        } else if (parts[4] !== "*") {
-          setScheduleFreq("weekly")
-          setScheduleTime(`${parts[1].padStart(2, "0")}:${parts[0].padStart(2, "0")}`)
-          setScheduleDayOfWeek(parts[4])
-        } else {
-          setScheduleFreq("daily")
-          setScheduleTime(`${parts[1].padStart(2, "0")}:${parts[0].padStart(2, "0")}`)
-        }
-      } else {
-        setScheduleFreq("daily")
-        setScheduleTime("08:00")
-        setScheduleDayOfWeek("1")
-        setScheduleDayOfMonth("1")
-      }
-    }
-  }, [nodes])
-
-  const handleDeleteNode = useCallback((nodeId: string) => {
-    setDeleteNodeId(nodeId)
-  }, [])
 
   const confirmDelete = useCallback(() => {
     if (deleteNodeId) {
@@ -374,48 +185,102 @@ function BuilderContent() {
     setTempConfig({})
   }, [])
 
-  const onNodesChange = useCallback((changes: NodeChange[]) => {
-    setNodes((nds) => {
-      const updatedNodes = [...nds]
-      for (const change of changes) {
-        if (change.type === "position" && change.position) {
-          const nodeIndex = updatedNodes.findIndex(n => n.id === change.id)
-          if (nodeIndex !== -1) {
-            updatedNodes[nodeIndex] = { ...updatedNodes[nodeIndex], position: change.position }
-          }
-        }
-        if (change.type === "remove") {
-          const nodeIndex = updatedNodes.findIndex(n => n.id === change.id)
-          if (nodeIndex !== -1) {
-            updatedNodes.splice(nodeIndex, 1)
-          }
-        }
-      }
-      return updatedNodes
-    })
-  }, [])
+  // Store handlers in ref and inject into nodes' data
+  useEffect(() => {
+    handlersRef.current = {
+      onEdit: (nodeId: string) => {
+        const node = nodes.find(n => n.id === nodeId)
+        if (node) {
+          setConfigNode(node)
+          const existingConfig: Record<string, string> = { type: node.data.type as string }
+          Object.entries(node.data).forEach(([key, value]) => {
+            if (!["type", "label", "sublabel", "onEdit", "onDelete"].includes(key) && typeof value === "string") {
+              existingConfig[key] = value
+            }
+          })
+          setTempConfig(existingConfig)
 
-  const onEdgesChange = useCallback((changes: EdgeChange[]) => {
-    setEdges((eds) => {
-      const updatedEdges = [...eds]
-      for (const change of changes) {
-        if (change.type === "remove") {
-          const edgeIndex = updatedEdges.findIndex(e => e.id === change.id)
-          if (edgeIndex !== -1) {
-            updatedEdges.splice(edgeIndex, 1)
+          if (node.data.type === "schedule" && node.data.cron) {
+            const cron = node.data.cron as string
+            const parts = cron.split(" ")
+            if (parts[0] !== "*" && parts[1] === "*") {
+              setScheduleFreq("minutely")
+            } else if (parts[1] !== "*" && parts[2] === "*") {
+              setScheduleFreq("hourly")
+            } else if (parts[4] !== "*" && parts[2] === "*") {
+              setScheduleFreq("daily")
+              setScheduleTime(`${parts[1].padStart(2, "0")}:${parts[0].padStart(2, "0")}`)
+            } else if (parts[4] !== "*" && parts[2] !== "*") {
+              setScheduleFreq("monthly")
+              setScheduleTime(`${parts[1].padStart(2, "0")}:${parts[0].padStart(2, "0")}`)
+              setScheduleDayOfMonth(parts[2])
+            } else if (parts[4] !== "*") {
+              setScheduleFreq("weekly")
+              setScheduleTime(`${parts[1].padStart(2, "0")}:${parts[0].padStart(2, "0")}`)
+              setScheduleDayOfWeek(parts[4])
+            } else {
+              setScheduleFreq("daily")
+              setScheduleTime(`${parts[1].padStart(2, "0")}:${parts[0].padStart(2, "0")}`)
+            }
+          } else {
+            setScheduleFreq("daily")
+            setScheduleTime("08:00")
+            setScheduleDayOfWeek("1")
+            setScheduleDayOfMonth("1")
           }
         }
+      },
+      onDelete: (nodeId: string) => {
+        setDeleteNodeId(nodeId)
       }
-      return updatedEdges
-    })
-  }, [])
+    }
+  }, [nodes])
+
+  // Inject handlers into nodes' data whenever a new node is added
+  const nodesLengthRef = useRef(0)
+  useEffect(() => {
+    if (!handlersRef.current) return
+
+    // Only run when nodes length changes (new node added)
+    if (nodes.length !== nodesLengthRef.current) {
+      nodesLengthRef.current = nodes.length
+
+      // Check if any node is missing handlers
+      const needsUpdate = nodes.some(node => !node.data.onEdit || !node.data.onDelete)
+      if (needsUpdate) {
+        setNodes(nds => nds.map(node => {
+          if (!node.data.onEdit || !node.data.onDelete) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                onEdit: handlersRef.current?.onEdit,
+                onDelete: handlersRef.current?.onDelete,
+              }
+            }
+          }
+          return node
+        }))
+      }
+    }
+  }, [nodes])
+
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
+    []
+  )
+
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange[]) => setEdges((eds) => applyEdgeChanges(changes, eds)),
+    []
+  )
 
   const handleTypeChange = (type: string) => {
     if (!configNode) return
-    
+
     const labels = configNode.type === "trigger" ? triggerLabels : actionLabels
     const config: Record<string, string> = { type }
-    
+
     if (type === "schedule") {
       config.cron = generateCronFromSchedule()
     } else if (type === "webhook") {
@@ -423,10 +288,10 @@ function BuilderContent() {
     } else if (type === "shell") {
       config.command = "echo 'Hello'"
     }
-    
-    setConfigNode({ 
-      ...configNode, 
-      data: { ...configNode.data, type, label: labels[type as keyof typeof labels]?.label || type, ...config } 
+
+    setConfigNode({
+      ...configNode,
+      data: { ...configNode.data, type, label: labels[type as keyof typeof labels]?.label || type, ...config }
     })
     setTempConfig(config)
   }
@@ -434,16 +299,15 @@ function BuilderContent() {
   const applyScheduleConfig = () => {
     if (!configNode) return
     const cron = generateCronFromSchedule()
-    const config = { 
-      cron, frequency: scheduleFreq, time: scheduleTime, 
+    const config = {
+      cron, frequency: scheduleFreq, time: scheduleTime,
       dayOfWeek: scheduleDayOfWeek, dayOfMonth: scheduleDayOfMonth,
       sublabel: `Cron: ${cron}`
     }
-    
+
     setNodes((nds) => nds.map((n) => n.id === configNode.id ? { ...n, data: { ...n.data, ...config } } : n))
-    setConfigNode({ ...configNode, data: { ...configNode.data, ...config } })
-    setTempConfig(prev => ({ ...prev, ...config }))
     toast.success("Configurazione salvata")
+    closeConfig()
   }
 
   const handleConfigChange = (key: string, value: string) => {
@@ -452,9 +316,9 @@ function BuilderContent() {
 
   const applyConfig = () => {
     if (!configNode) return
-    setNodes((nds) => nds.map((n) => n.id === configNode.id ? { ...n, data: { ...n.data, ...tempConfig } } : n))
-    setConfigNode({ ...configNode, data: { ...configNode.data, ...tempConfig } })
+    setNodes((nds) => nds.map((n) => n.id === configNode.id ? { ...n, data: { ...n.data, ...tempConfig, sublabel: tempConfig.command || tempConfig.endpoint || tempConfig.path || tempConfig.message || '' } } : n))
     toast.success("Configurazione salvata")
+    closeConfig()
   }
 
   const onSave = async () => {
@@ -482,13 +346,13 @@ function BuilderContent() {
       const actionConfig: Record<string, string> = {}
 
       Object.entries(triggerNode.data).forEach(([key, value]) => {
-        if (!["type", "label", "sublabel"].includes(key)) {
+        if (!["type", "label", "sublabel", "onEdit", "onDelete"].includes(key) && typeof value !== "function") {
           triggerConfig[key] = value as string
         }
       })
 
       Object.entries(actionNode.data).forEach(([key, value]) => {
-        if (!["type", "label", "sublabel"].includes(key)) {
+        if (!["type", "label", "sublabel", "onEdit", "onDelete"].includes(key) && typeof value !== "function") {
           actionConfig[key] = value as string
         }
       })
@@ -543,58 +407,25 @@ function BuilderContent() {
         </div>
 
         {isTrigger && nodeType === "schedule" && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2"><Clock className="h-4 w-4" /> Pianificazione</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-2">
-                <Label>Frequenza</Label>
-                <Select value={scheduleFreq} onValueChange={setScheduleFreq}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {SCHEDULE_FREQUENCIES.map((freq) => (
-                      <SelectItem key={freq.value} value={freq.value}>{freq.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {scheduleFreq === "daily" && <div className="grid gap-2"><Label>Orario</Label><Input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} /></div>}
-              {scheduleFreq === "weekly" && (
-                <div className="grid gap-2">
-                  <Label>Giorno</Label>
-                  <Select value={scheduleDayOfWeek} onValueChange={setScheduleDayOfWeek}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{DAYS_OF_WEEK.map((day) => (<SelectItem key={day.value} value={day.value}>{day.label}</SelectItem>))}</SelectContent>
-                  </Select>
-                  <Input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} />
-                </div>
-              )}
-              {scheduleFreq === "monthly" && (
-                <div className="grid gap-2">
-                  <Label>Giorno del mese</Label>
-                  <Select value={scheduleDayOfMonth} onValueChange={setScheduleDayOfMonth}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{DAYS_OF_MONTH.map((day) => (<SelectItem key={day.value} value={day.value}>{day.label}</SelectItem>))}</SelectContent>
-                  </Select>
-                  <Input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} />
-                </div>
-              )}
-              {(scheduleFreq === "hourly" || scheduleFreq === "minutely") && <p className="text-sm text-muted-foreground">{scheduleFreq === "hourly" ? "All'inizio di ogni ora" : "Ogni minuto"}</p>}
-              <Button onClick={applyScheduleConfig} className="w-full">Salva</Button>
-            </CardContent>
-          </Card>
+          <ScheduleConfig
+            scheduleFreq={scheduleFreq}
+            setScheduleFreq={setScheduleFreq}
+            scheduleTime={scheduleTime}
+            setScheduleTime={setScheduleTime}
+            scheduleDayOfWeek={scheduleDayOfWeek}
+            setScheduleDayOfWeek={setScheduleDayOfWeek}
+            scheduleDayOfMonth={scheduleDayOfMonth}
+            setScheduleDayOfMonth={setScheduleDayOfMonth}
+            onSave={applyScheduleConfig}
+          />
         )}
 
         {isTrigger && nodeType === "webhook" && (
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Globe className="h-4 w-4" /> Webhook</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-2"><Label>Endpoint</Label><Input value={tempConfig.endpoint || ""} onChange={(e) => handleConfigChange("endpoint", e.target.value)} placeholder="/webhook/my-trigger" /></div>
-              <p className="text-xs text-muted-foreground">Endpoint: /api/webhook{ tempConfig.endpoint || "/..." }</p>
-              <Button onClick={applyConfig} className="w-full">Salva</Button>
-            </CardContent>
-          </Card>
+          <WebhookConfig
+            config={tempConfig}
+            onConfigChange={handleConfigChange}
+            onSave={applyConfig}
+          />
         )}
 
         {isTrigger && nodeType === "file_change" && (
@@ -673,24 +504,11 @@ function BuilderContent() {
         )}
 
         {!isTrigger && nodeType === "shell" && (
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Settings className="h-4 w-4" /> Shell</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-2">
-                <Label>Preset</Label>
-                <Select value={SHELL_PRESETS.find(p => p.command === tempConfig.command)?.label || ""} onValueChange={(value) => { const preset = SHELL_PRESETS.find(p => p.label === value); if (preset) handleConfigChange("command", preset.command) }}>
-                  <SelectTrigger><SelectValue placeholder="Seleziona..." /></SelectTrigger>
-                  <SelectContent>
-                    {SHELL_PRESETS.map((preset) => (<SelectItem key={preset.label} value={preset.label}>{preset.label}</SelectItem>))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2"><Label>Comando</Label><Input value={tempConfig.command || ""} onChange={(e) => handleConfigChange("command", e.target.value)} placeholder="echo 'Hello'" /></div>
-              <div className="grid gap-2"><Label>Working Directory</Label><Input value={tempConfig.working_dir || ""} onChange={(e) => handleConfigChange("working_dir", e.target.value)} placeholder="~/Projects" /></div>
-              <div className="grid gap-2"><Label>Timeout (secondi)</Label><Input type="number" value={tempConfig.timeout || "60"} onChange={(e) => handleConfigChange("timeout", e.target.value)} placeholder="60" /></div>
-              <Button onClick={applyConfig} className="w-full">Salva</Button>
-            </CardContent>
-          </Card>
+          <ShellConfig
+            config={tempConfig}
+            onConfigChange={handleConfigChange}
+            onSave={applyConfig}
+          />
         )}
 
         {!isTrigger && nodeType === "ai_agent" && (
@@ -750,10 +568,7 @@ function BuilderContent() {
     )
   }
 
-  const nodeTypes = {
-    trigger: (props: any) => <TriggerNode {...props} onEdit={handleEditNode} onDelete={handleDeleteNode} />,
-    action: (props: any) => <ActionNode {...props} onEdit={handleEditNode} onDelete={handleDeleteNode} />,
-  }
+
 
   return (
     <div className="w-full h-[calc(100vh-64px)] flex">
@@ -764,7 +579,7 @@ function BuilderContent() {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
-          onPaneClick={() => {}}
+          onPaneClick={() => { }}
           onDragOver={onDragOver}
           onDrop={onDrop}
           nodeTypes={nodeTypes}
@@ -802,7 +617,7 @@ function BuilderContent() {
 
       <div className="w-64 border-l bg-card p-4 overflow-y-auto">
         <h3 className="font-semibold mb-4">Nodi</h3>
-        
+
         <div className="space-y-4">
           <div>
             <h4 className="text-sm font-medium mb-2 text-muted-foreground">Triggers</h4>
