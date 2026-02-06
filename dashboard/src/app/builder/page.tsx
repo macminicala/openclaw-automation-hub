@@ -105,7 +105,7 @@ const NOTIFY_CHANNELS = [
   { label: "Telegram", value: "telegram" },
 ]
 
-function TriggerNode({ data, isConnectable }: any) {
+function TriggerNode({ data, isConnectable, onEdit, onDelete }: any) {
   const colors: Record<string, string> = {
     schedule: "bg-blue-500 border-blue-600",
     webhook: "bg-green-500 border-green-600",
@@ -129,16 +129,18 @@ function TriggerNode({ data, isConnectable }: any) {
       </div>
       <Handle type="source" position={Position.Right} isConnectable={isConnectable} className="w-3 h-3 bg-white" />
       
-      <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+      <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10">
         <button
-          onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("editNode", { detail: data })) }}
+          onClick={(e) => { e.stopPropagation(); onEdit?.(data.id) }}
           className="p-1 bg-white rounded-full shadow hover:bg-gray-100"
+          title="Modifica"
         >
           <Edit3 className="w-3 h-3 text-gray-700" />
         </button>
         <button
-          onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("deleteNode", { detail: data.id })) }}
+          onClick={(e) => { e.stopPropagation(); onDelete?.(data.id) }}
           className="p-1 bg-white rounded-full shadow hover:bg-red-100"
+          title="Elimina"
         >
           <Trash2 className="w-3 h-3 text-red-600" />
         </button>
@@ -147,7 +149,7 @@ function TriggerNode({ data, isConnectable }: any) {
   )
 }
 
-function ActionNode({ data, isConnectable }: any) {
+function ActionNode({ data, isConnectable, onEdit, onDelete }: any) {
   const colors: Record<string, string> = {
     shell: "bg-orange-500 border-orange-600",
     ai_agent: "bg-indigo-500 border-indigo-600",
@@ -170,27 +172,24 @@ function ActionNode({ data, isConnectable }: any) {
       </div>
       <Handle type="source" position={Position.Right} isConnectable={isConnectable} className="w-3 h-3 bg-white" />
       
-      <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+      <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10">
         <button
-          onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("editNode", { detail: data })) }}
+          onClick={(e) => { e.stopPropagation(); onEdit?.(data.id) }}
           className="p-1 bg-white rounded-full shadow hover:bg-gray-100"
+          title="Modifica"
         >
           <Edit3 className="w-3 h-3 text-gray-700" />
         </button>
         <button
-          onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("deleteNode", { detail: data.id })) }}
+          onClick={(e) => { e.stopPropagation(); onDelete?.(data.id) }}
           className="p-1 bg-white rounded-full shadow hover:bg-red-100"
+          title="Elimina"
         >
           <Trash2 className="w-3 h-3 text-red-600" />
         </button>
       </div>
     </div>
   )
-}
-
-const nodeTypes = {
-  trigger: TriggerNode,
-  action: ActionNode,
 }
 
 function BuilderContent() {
@@ -204,7 +203,6 @@ function BuilderContent() {
   const [automationId, setAutomationId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [configNode, setConfigNode] = useState<Node | null>(null)
-  const openConfigRef = useRef<(node: Node) => void>(() => {})
   const [deleteNodeId, setDeleteNodeId] = useState<string | null>(null)
   const [tempConfig, setTempConfig] = useState<Record<string, string>>({})
 
@@ -220,27 +218,6 @@ function BuilderContent() {
       loadAutomation(id)
     }
   }, [searchParams])
-
-  useEffect(() => {
-    const handleEditNode = (e: Event) => {
-      const nodeData = (e as CustomEvent).detail
-      const node = nodes.find(n => n.id === nodeData.id)
-      if (node) openConfigRef.current(node)
-    }
-
-    const handleDeleteNode = (e: Event) => {
-      const nodeId = (e as CustomEvent).detail
-      setDeleteNodeId(nodeId)
-    }
-
-    window.addEventListener("editNode", handleEditNode)
-    window.addEventListener("deleteNode", handleDeleteNode)
-
-    return () => {
-      window.removeEventListener("editNode", handleEditNode)
-      window.removeEventListener("deleteNode", handleDeleteNode)
-    }
-  }, [nodes])
 
   const loadAutomation = async (id: string) => {
     try {
@@ -334,62 +311,68 @@ function BuilderContent() {
     [screenToFlowPosition],
   )
 
-  const openConfig = useCallback((node: Node) => {
-    setConfigNode(node)
-    openConfigRef.current(node)
-    
-    const existingConfig: Record<string, string> = { type: node.data.type as string }
-    Object.entries(node.data).forEach(([key, value]) => {
-      if (!["type", "label", "sublabel"].includes(key) && typeof value === "string") {
-        existingConfig[key] = value
-      }
-    })
-    setTempConfig(existingConfig)
-    
-    if (node.data.type === "schedule" && node.data.cron) {
-      const cron = node.data.cron as string
-      const parts = cron.split(" ")
+  const handleEditNode = useCallback((nodeId: string) => {
+    const node = nodes.find(n => n.id === nodeId)
+    if (node) {
+      setConfigNode(node)
       
-      if (parts[0] !== "*" && parts[1] === "*") {
-        setScheduleFreq("minutely")
-      } else if (parts[1] !== "*" && parts[2] === "*") {
-        setScheduleFreq("hourly")
-      } else if (parts[4] !== "*" && parts[2] === "*") {
-        setScheduleFreq("daily")
-        setScheduleTime(`${parts[1].padStart(2, "0")}:${parts[0].padStart(2, "0")}`)
-      } else if (parts[4] !== "*" && parts[2] !== "*") {
-        setScheduleFreq("monthly")
-        setScheduleTime(`${parts[1].padStart(2, "0")}:${parts[0].padStart(2, "0")}`)
-        setScheduleDayOfMonth(parts[2])
-      } else if (parts[4] !== "*") {
-        setScheduleFreq("weekly")
-        setScheduleTime(`${parts[1].padStart(2, "0")}:${parts[0].padStart(2, "0")}`)
-        setScheduleDayOfWeek(parts[4])
+      const existingConfig: Record<string, string> = { type: node.data.type as string }
+      Object.entries(node.data).forEach(([key, value]) => {
+        if (!["type", "label", "sublabel"].includes(key) && typeof value === "string") {
+          existingConfig[key] = value
+        }
+      })
+      setTempConfig(existingConfig)
+      
+      if (node.data.type === "schedule" && node.data.cron) {
+        const cron = node.data.cron as string
+        const parts = cron.split(" ")
+        
+        if (parts[0] !== "*" && parts[1] === "*") {
+          setScheduleFreq("minutely")
+        } else if (parts[1] !== "*" && parts[2] === "*") {
+          setScheduleFreq("hourly")
+        } else if (parts[4] !== "*" && parts[2] === "*") {
+          setScheduleFreq("daily")
+          setScheduleTime(`${parts[1].padStart(2, "0")}:${parts[0].padStart(2, "0")}`)
+        } else if (parts[4] !== "*" && parts[2] !== "*") {
+          setScheduleFreq("monthly")
+          setScheduleTime(`${parts[1].padStart(2, "0")}:${parts[0].padStart(2, "0")}`)
+          setScheduleDayOfMonth(parts[2])
+        } else if (parts[4] !== "*") {
+          setScheduleFreq("weekly")
+          setScheduleTime(`${parts[1].padStart(2, "0")}:${parts[0].padStart(2, "0")}`)
+          setScheduleDayOfWeek(parts[4])
+        } else {
+          setScheduleFreq("daily")
+          setScheduleTime(`${parts[1].padStart(2, "0")}:${parts[0].padStart(2, "0")}`)
+        }
       } else {
         setScheduleFreq("daily")
-        setScheduleTime(`${parts[1].padStart(2, "0")}:${parts[0].padStart(2, "0")}`)
+        setScheduleTime("08:00")
+        setScheduleDayOfWeek("1")
+        setScheduleDayOfMonth("1")
       }
-    } else if (node.data.type === "schedule") {
-      setScheduleFreq("daily")
-      setScheduleTime("08:00")
-      setScheduleDayOfWeek("1")
-      setScheduleDayOfMonth("1")
     }
+  }, [nodes])
+
+  const handleDeleteNode = useCallback((nodeId: string) => {
+    setDeleteNodeId(nodeId)
   }, [])
 
-  const closeConfig = useCallback(() => {
-    setConfigNode(null)
-    setTempConfig({})
-  }, [])
-
-  const confirmDelete = () => {
+  const confirmDelete = useCallback(() => {
     if (deleteNodeId) {
       setNodes((nds) => nds.filter(n => n.id !== deleteNodeId))
       setEdges((eds) => eds.filter(e => e.source !== deleteNodeId && e.target !== deleteNodeId))
       toast.success("Nodo eliminato")
       setDeleteNodeId(null)
     }
-  }
+  }, [deleteNodeId])
+
+  const closeConfig = useCallback(() => {
+    setConfigNode(null)
+    setTempConfig({})
+  }, [])
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     setNodes((nds) => {
@@ -715,27 +698,7 @@ function BuilderContent() {
             <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Settings className="h-4 w-4" /> AI Agent</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2"><Label>Nome Agent</Label><Input value={tempConfig.agent || ""} onChange={(e) => handleConfigChange("agent", e.target.value)} placeholder="researcher" /></div>
-              <div className="grid gap-2"><Label>Istruzioni</Label><Input value={tempConfig.instructions || ""} onChange={(e) => handleConfigChange("instructions", e.target.value)} placeholder="Cerca informazioni su..." /></div>
-              <div className="grid gap-2">
-                <Label>Model</Label>
-                <Select value={tempConfig.model || "default"} onValueChange={(v) => handleConfigChange("model", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="default">Default</SelectItem>
-                    <SelectItem value="gpt-4">GPT-4</SelectItem>
-                    <SelectItem value="claude-3">Claude 3</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={applyConfig} className="w-full">Salva</Button>
-            </CardContent>
-          </Card>
-        )}
 
-        {!isTrigger && nodeType === "git" && (
-          <Card>
-            <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><GitBranch className="h-4 w-4" /> Git</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
               <div className="grid gap-2">
                 <Label>Comando</Label>
                 <Select value={GIT_COMMANDS.find(c => c.command === tempConfig.command)?.label || ""} onValueChange={(value) => { const cmd = GIT_COMMANDS.find(c => c.label === value); if (cmd) handleConfigChange("command", cmd.command) }}>
@@ -787,6 +750,11 @@ function BuilderContent() {
     )
   }
 
+  const nodeTypes = {
+    trigger: (props: any) => <TriggerNode {...props} onEdit={handleEditNode} onDelete={handleDeleteNode} />,
+    action: (props: any) => <ActionNode {...props} onEdit={handleEditNode} onDelete={handleDeleteNode} />,
+  }
+
   return (
     <div className="w-full h-[calc(100vh-64px)] flex">
       <div className="flex-1 h-full relative">
@@ -796,8 +764,7 @@ function BuilderContent() {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
-          onNodeClick={() => {}}
-          onPaneClick={closeConfig}
+          onPaneClick={() => {}}
           onDragOver={onDragOver}
           onDrop={onDrop}
           nodeTypes={nodeTypes}
@@ -882,10 +849,11 @@ function BuilderContent() {
           <p className="font-medium mb-2">Come usare:</p>
           <ol className="space-y-1 list-decimal list-inside text-muted-foreground">
             <li>Trascina un Trigger</li>
-            <li>Trascina un&apos;Azione</li>
+            <li>Trascina un Azione</li>
             <li>Trascina i nodi dove vuoi</li>
             <li>Connetti (drag dal punto blu)</li>
-            <li>Clicca per configurare</li>
+            <li>Passa sopra un nodo e clicca la matita per configurare</li>
+            <li>Clicca il cestino per eliminare</li>
             <li>Salva</li>
           </ol>
         </div>
@@ -913,7 +881,7 @@ function BuilderContent() {
               Elimina Nodo
             </DialogTitle>
             <DialogDescription>
-              Sei sicuro di voler eliminare questo nodo? L&apos;azione non può essere annullata.
+              Sei sicuro di voler eliminare questo nodo? L azione non puo essere annullata.
             </DialogDescription>
           </DialogHeader>
           <div className="flex gap-2 justify-end mt-4">
