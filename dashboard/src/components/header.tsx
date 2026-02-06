@@ -1,4 +1,6 @@
 import { cn } from "@/lib/utils"
+import Link from "next/link"
+import { History, Settings } from "lucide-react"
 
 interface HeaderProps {
   stats?: {
@@ -13,26 +15,46 @@ export function Header({ stats }: HeaderProps) {
     <header className="border-b bg-card">
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-              <svg
-                className="h-6 w-6 text-primary-foreground"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+          <div className="flex items-center gap-6">
+            <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
+                <svg
+                  className="h-6 w-6 text-primary-foreground"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-xl font-semibold">Automation Hub</h1>
+                <p className="text-sm text-muted-foreground">Gestisci le tue automazioni</p>
+              </div>
+            </Link>
+
+            {/* Navigation */}
+            <nav className="hidden md:flex items-center gap-4 ml-6 border-l pl-6">
+              <Link
+                href="/logs"
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold">Automation Hub</h1>
-              <p className="text-sm text-muted-foreground">Gestisci le tue automazioni</p>
-            </div>
+                <History className="h-4 w-4" />
+                Cronologia
+              </Link>
+              <Link
+                href="/settings"
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Settings className="h-4 w-4" />
+                Impostazioni
+              </Link>
+            </nav>
           </div>
 
           {stats && (
@@ -56,3 +78,4 @@ export function Header({ stats }: HeaderProps) {
     </header>
   )
 }
+

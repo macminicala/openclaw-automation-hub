@@ -40,7 +40,7 @@ export function ScheduleConfig({
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="grid gap-2">
-                    <Label>Frequenza</Label>
+                    <Label>Frequenza <span className="text-red-500">*</span></Label>
                     <Select value={scheduleFreq} onValueChange={setScheduleFreq}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>

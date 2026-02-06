@@ -22,7 +22,7 @@ export function WebhookConfig({ config, onConfigChange, onSave }: WebhookConfigP
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="grid gap-2">
-                    <Label>Endpoint</Label>
+                    <Label>Endpoint <span className="text-red-500">*</span></Label>
                     <Input
                         value={config.endpoint || ""}
                         onChange={(e) => onConfigChange("endpoint", e.target.value)}
@@ -34,7 +34,7 @@ export function WebhookConfig({ config, onConfigChange, onSave }: WebhookConfigP
                     Endpoint: /api/webhook{config.endpoint || "/..."}
                 </p>
 
-                <Button onClick={onSave} className="w-full">Salva</Button>
+                <Button onClick={onSave} className="w-full" disabled={!config.endpoint?.trim()}>Salva</Button>
             </CardContent>
         </Card>
     )

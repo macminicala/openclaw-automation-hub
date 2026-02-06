@@ -44,7 +44,7 @@ export function ShellConfig({ config, onConfigChange, onSave }: ShellConfigProps
                 </div>
 
                 <div className="grid gap-2">
-                    <Label>Comando</Label>
+                    <Label>Comando <span className="text-red-500">*</span></Label>
                     <Input
                         value={config.command || ""}
                         onChange={(e) => onConfigChange("command", e.target.value)}
@@ -71,7 +71,7 @@ export function ShellConfig({ config, onConfigChange, onSave }: ShellConfigProps
                     />
                 </div>
 
-                <Button onClick={onSave} className="w-full">Salva</Button>
+                <Button onClick={onSave} className="w-full" disabled={!config.command?.trim()}>Salva</Button>
             </CardContent>
         </Card>
     )

@@ -432,9 +432,9 @@ function BuilderContent() {
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Folder className="h-4 w-4" /> Monitora File</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-2"><Label>Percorso</Label><Input value={tempConfig.path || ""} onChange={(e) => handleConfigChange("path", e.target.value)} placeholder="~/Documents" /></div>
+              <div className="grid gap-2"><Label>Percorso <span className="text-red-500">*</span></Label><Input value={tempConfig.path || ""} onChange={(e) => handleConfigChange("path", e.target.value)} placeholder="~/Documents" /></div>
               <div className="grid gap-2">
-                <Label>Evento</Label>
+                <Label>Evento <span className="text-red-500">*</span></Label>
                 <Select value={tempConfig.event || "change"} onValueChange={(v) => handleConfigChange("event", v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -445,7 +445,7 @@ function BuilderContent() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={applyConfig} className="w-full">Salva</Button>
+              <Button onClick={applyConfig} className="w-full" disabled={!tempConfig.path?.trim()}>Salva</Button>
             </CardContent>
           </Card>
         )}
@@ -490,7 +490,7 @@ function BuilderContent() {
             <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Monitor className="h-4 w-4" /> Sistema</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2">
-                <Label>Evento</Label>
+                <Label>Evento <span className="text-red-500">*</span></Label>
                 <Select value={tempConfig.event || ""} onValueChange={(v) => handleConfigChange("event", v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -498,7 +498,7 @@ function BuilderContent() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={applyConfig} className="w-full">Salva</Button>
+              <Button onClick={applyConfig} className="w-full" disabled={!tempConfig.event}>Salva</Button>
             </CardContent>
           </Card>
         )}
@@ -515,7 +515,7 @@ function BuilderContent() {
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Settings className="h-4 w-4" /> AI Agent</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-2"><Label>Nome Agent</Label><Input value={tempConfig.agent || ""} onChange={(e) => handleConfigChange("agent", e.target.value)} placeholder="researcher" /></div>
+              <div className="grid gap-2"><Label>Nome Agent <span className="text-red-500">*</span></Label><Input value={tempConfig.agent || ""} onChange={(e) => handleConfigChange("agent", e.target.value)} placeholder="researcher" /></div>
 
               <div className="grid gap-2">
                 <Label>Comando</Label>
@@ -528,7 +528,7 @@ function BuilderContent() {
               </div>
               <div className="grid gap-2"><Label>Repository</Label><Input value={tempConfig.repository || ""} onChange={(e) => handleConfigChange("repository", e.target.value)} placeholder="https://github.com/user/repo" /></div>
               <div className="grid gap-2"><Label>Branch</Label><Input value={tempConfig.branch || ""} onChange={(e) => handleConfigChange("branch", e.target.value)} placeholder="main" /></div>
-              <Button onClick={applyConfig} className="w-full">Salva</Button>
+              <Button onClick={applyConfig} className="w-full" disabled={!tempConfig.agent?.trim()}>Salva</Button>
             </CardContent>
           </Card>
         )}
@@ -538,7 +538,7 @@ function BuilderContent() {
             <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Bell className="h-4 w-4" /> Notifica</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-2">
-                <Label>Canale</Label>
+                <Label>Canale <span className="text-red-500">*</span></Label>
                 <Select value={tempConfig.channel || ""} onValueChange={(v) => handleConfigChange("channel", v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -546,9 +546,9 @@ function BuilderContent() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-2"><Label>Messaggio</Label><Input value={tempConfig.message || ""} onChange={(e) => handleConfigChange("message", e.target.value)} placeholder="Notifica..." /></div>
+              <div className="grid gap-2"><Label>Messaggio <span className="text-red-500">*</span></Label><Input value={tempConfig.message || ""} onChange={(e) => handleConfigChange("message", e.target.value)} placeholder="Notifica..." /></div>
               <div className="grid gap-2"><Label>Destinatario (opzionale)</Label><Input value={tempConfig.recipient || ""} onChange={(e) => handleConfigChange("recipient", e.target.value)} placeholder="@user o email" /></div>
-              <Button onClick={applyConfig} className="w-full">Salva</Button>
+              <Button onClick={applyConfig} className="w-full" disabled={!tempConfig.channel || !tempConfig.message?.trim()}>Salva</Button>
             </CardContent>
           </Card>
         )}
@@ -557,10 +557,10 @@ function BuilderContent() {
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Mail className="h-4 w-4" /> Invia Email</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-2"><Label>Destinatario</Label><Input type="email" value={tempConfig.to || ""} onChange={(e) => handleConfigChange("to", e.target.value)} placeholder="user@example.com" /></div>
-              <div className="grid gap-2"><Label>Oggetto</Label><Input value={tempConfig.subject || ""} onChange={(e) => handleConfigChange("subject", e.target.value)} placeholder="Oggetto email" /></div>
+              <div className="grid gap-2"><Label>Destinatario <span className="text-red-500">*</span></Label><Input type="email" value={tempConfig.to || ""} onChange={(e) => handleConfigChange("to", e.target.value)} placeholder="user@example.com" /></div>
+              <div className="grid gap-2"><Label>Oggetto <span className="text-red-500">*</span></Label><Input value={tempConfig.subject || ""} onChange={(e) => handleConfigChange("subject", e.target.value)} placeholder="Oggetto email" /></div>
               <div className="grid gap-2"><Label>Corpo</Label><Input value={tempConfig.body || ""} onChange={(e) => handleConfigChange("body", e.target.value)} placeholder="Contenuto email" /></div>
-              <Button onClick={applyConfig} className="w-full">Salva</Button>
+              <Button onClick={applyConfig} className="w-full" disabled={!tempConfig.to?.trim() || !tempConfig.subject?.trim()}>Salva</Button>
             </CardContent>
           </Card>
         )}
@@ -595,19 +595,23 @@ function BuilderContent() {
             </Button>
           </Panel>
           <Panel position="top-left">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome Automazione</Label>
+            <div className="space-y-2 bg-white dark:bg-zinc-900 p-3 rounded-lg shadow-md border">
+              <Label htmlFor="name">Nome Automazione <span className="text-red-500">*</span></Label>
               <Input
                 id="name"
                 placeholder="Es. Backup Giornaliero"
                 value={automationName}
                 onChange={(e) => setAutomationName(e.target.value)}
-                className="w-64"
+                className="w-64 bg-white dark:bg-zinc-800"
               />
             </div>
           </Panel>
           <Panel position="bottom-center">
-            <Button onClick={onSave} disabled={isSaving} size="lg">
+            <Button
+              onClick={onSave}
+              disabled={isSaving || !automationName.trim() || !nodes.some(n => n.type === "trigger") || !nodes.some(n => n.type === "action") || edges.length === 0}
+              size="lg"
+            >
               <Save className="h-4 w-4 mr-2" />
               {isSaving ? "Salvataggio..." : "Salva Automazione"}
             </Button>
